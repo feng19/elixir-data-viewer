@@ -1,0 +1,259 @@
+/*
+ * Elixir Data Viewer — VS Code Dark+ Theme
+ *
+ * Colors based on VS Code's default Dark+ color theme.
+ */
+
+/* ===== Container ===== */
+.edv-container {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New",
+    monospace;
+  font-size: 14px;
+  line-height: 20px;
+  height: 100%;
+  overflow: auto;
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+.edv-scroll {
+  min-width: fit-content;
+  padding-bottom: 20px;
+}
+
+/* ===== Line ===== */
+.edv-line {
+  display: flex;
+  min-height: 20px;
+}
+
+.edv-line:hover {
+  background: #2a2d2e;
+}
+
+/* ===== Gutter ===== */
+.edv-gutter {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: 8px;
+  padding-left: 4px;
+  user-select: none;
+  -webkit-user-select: none;
+  gap: 2px;
+}
+
+/* Line number */
+.edv-line-number {
+  color: #858585;
+  text-align: right;
+  min-width: 2.5em;
+  padding-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.edv-line:hover .edv-line-number {
+  color: #c6c6c6;
+}
+
+/* ===== Fold indicator ===== */
+.edv-fold-indicator {
+  width: 16px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: transparent;
+  flex-shrink: 0;
+}
+
+.edv-fold-indicator.edv-foldable {
+  cursor: pointer;
+  color: #c5c5c5;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* Show fold indicators on line hover */
+.edv-line:hover .edv-fold-indicator.edv-foldable {
+  opacity: 1;
+}
+
+/* Always show fold indicator for folded regions */
+.edv-fold-indicator.edv-foldable[data-folded="true"] {
+  opacity: 1;
+}
+
+/* ===== Code content ===== */
+.edv-code {
+  flex: 1;
+  white-space: pre;
+  padding-left: 8px;
+  min-height: 20px;
+  border-left: 1px solid #333333;
+}
+
+/* ===== Word wrap mode ===== */
+.edv-word-wrap .edv-scroll {
+  min-width: unset;
+}
+
+.edv-word-wrap .edv-code {
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.edv-word-wrap .edv-line {
+  align-items: flex-start;
+}
+
+/* ===== Fold ellipsis ===== */
+.edv-fold-ellipsis {
+  display: inline-block;
+  background: #3c3c3c;
+  color: #a0a0a0;
+  padding: 0 4px;
+  margin: 0 2px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #555555;
+  line-height: 16px;
+  vertical-align: middle;
+}
+
+.edv-fold-ellipsis:hover {
+  background: #505050;
+  color: #d4d4d4;
+  border-color: #777777;
+}
+
+/* ===== Syntax highlighting tokens ===== */
+
+/* Atoms and keywords (Elixir atoms like :foo) */
+.tok-atom {
+  color: #569cd6;
+}
+
+/* Module aliases (Elixir aliases like MyModule) */
+.tok-namespace {
+  color: #4ec9b0;
+}
+
+/* Booleans: true, false */
+.tok-bool {
+  color: #569cd6;
+}
+
+/* nil */
+.tok-null {
+  color: #569cd6;
+}
+
+/* Integers and floats */
+.tok-number {
+  color: #b5cea8;
+}
+
+/* Character literals */
+.tok-character {
+  color: #d7ba7d;
+}
+
+/* Variable names */
+.tok-variableName {
+  color: #9cdcfe;
+}
+
+/* Strings */
+.tok-string {
+  color: #ce9178;
+}
+
+/* Escape sequences */
+.tok-escape {
+  color: #d7ba7d;
+}
+
+/* Keywords: do, end, fn, etc. */
+.tok-keyword {
+  color: #c586c0;
+}
+
+/* Operators: +, -, |>, etc. */
+.tok-operator {
+  color: #d4d4d4;
+}
+
+/* Comments */
+.tok-comment {
+  color: #6a9955;
+  font-style: italic;
+}
+
+/* Punctuation: (), [], {}, etc. */
+.tok-punctuation {
+  color: #d4d4d4;
+}
+
+/* Separators: comma, semicolon */
+.tok-separator {
+  color: #d4d4d4;
+}
+
+/* Angle brackets: <<, >> */
+.tok-angleBracket {
+  color: #d4d4d4;
+}
+
+/* Function calls */
+.tok-function {
+  color: #dcdcaa;
+}
+
+/* Module attributes */
+.tok-attributeName {
+  color: #9cdcfe;
+}
+
+/* Doc strings */
+.tok-docString {
+  color: #608b4e;
+}
+
+/* Special variable names */
+.tok-special {
+  color: #dcdcaa;
+}
+
+/* Definition names */
+.tok-definition {
+  color: #dcdcaa;
+}
+
+/* ===== Scrollbar styling (VS Code-like) ===== */
+.edv-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.edv-container::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.edv-container::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 5px;
+}
+
+.edv-container::-webkit-scrollbar-thumb:hover {
+  background: #4f4f4f;
+}
+
+.edv-container::-webkit-scrollbar-corner {
+  background: #1e1e1e;
+}
