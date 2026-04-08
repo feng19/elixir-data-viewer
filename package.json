@@ -1,20 +1,69 @@
 {
   "name": "elixir-data-viewer",
   "version": "1.0.0",
-  "private": true,
+  "description": "A read-only web viewer for Elixir data structures with syntax highlighting, code folding, and line numbers. Powered by lezer-elixir.",
   "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "elixir",
+    "data-viewer",
+    "syntax-highlighting",
+    "lezer",
+    "code-folding",
+    "read-only"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
   },
   "dependencies": {
-    "lezer-elixir": "^1.1.3",
-    "@lezer/common": "^1.2.0",
-    "@lezer/highlight": "^1.2.0"
+    "@lezer/common": "^1.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "lezer-elixir": "^1.1.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.2",
     "typescript": "^5.4.0",
     "vite": "^5.4.0"
+  },
+  "peerDependencies": {
+    "@lezer/common": "^1.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "lezer-elixir": "^1.1.0"
+  },
+  "peerDependenciesMeta": {
+    "lezer-elixir": {
+      "optional": false
+    },
+    "@lezer/common": {
+      "optional": false
+    },
+    "@lezer/highlight": {
+      "optional": false
+    }
   }
 }

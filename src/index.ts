@@ -1,0 +1,23 @@
+/**
+ * Elixir Data Viewer — A read-only web viewer for Elixir data structures
+ * with syntax highlighting, code folding, and line numbers.
+ *
+ * @example
+ * ```ts
+ * import { ElixirDataViewer } from "elixir-data-viewer";
+ * import "elixir-data-viewer/style.css";
+ *
+ * const viewer = new ElixirDataViewer(document.getElementById("container")!);
+ * viewer.setContent('%{name: "Alice", age: 30}');
+ * ```
+ */
+
+import "./styles/theme.css";
+
+export { ElixirDataViewer } from "./renderer";
+export { parseElixir } from "./parser";
+export { highlight, getLineTokens } from "./highlighter";
+export type { HighlightToken } from "./highlighter";
+export { detectFoldRegions, buildFoldMap } from "./fold";
+export type { FoldRegion } from "./fold";
+export { FoldState } from "./state";
