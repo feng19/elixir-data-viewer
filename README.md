@@ -135,6 +135,54 @@ Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-
 | `isWordWrap(): boolean` | Get current word wrap state |
 | `copyContent(): Promise<void>` | Copy raw content to clipboard |
 | `onRender(callback: () => void): void` | Set a callback after each render |
+| `onInspect(callback: ((event: InspectEvent) => void) \| null): void` | Set a callback when a value is clicked (see below) |
+
+#### `onInspect` — Custom Click Handling
+
+Register a callback that fires when the user clicks an inspectable value (string, atom, number, structure, etc.). The callback receives an `InspectEvent` with the value's type, text, DOM element reference, and a `preventDefault()` method to suppress the default copy-to-clipboard behavior.
+
+```typescript
+interface InspectEvent {
+  type: InspectType;        // "String" | "Atom" | "Integer" | "Map" | ...
+  copyText: string;         // The text that would be copied
+  target: InspectTarget;    // Full target with from/to offsets
+  element: HTMLElement;     // The clicked DOM element
+  mouseEvent: MouseEvent;   // The original click event
+  preventDefault(): void;   // Call to suppress default copy + toast
+}
+```
+
+**Example: Log to console, suppress copy for strings**
+
+```typescript
+viewer.onInspect((event) => {
+  console.log(`Clicked ${event.type}: ${event.copyText}`);
+
+  if (event.type === "String") {
+    event.preventDefault();
+    // Custom handling — e.g. open a modal
+  }
+  // Other types still get the default copy behavior
+});
+```
+
+**Example: Render string content as Markdown in a modal**
+
+```typescript
+viewer.onInspect((event) => {
+  if (event.type === "String") {
+    event.preventDefault();
+    const content = event.copyText.slice(1, -1); // strip quotes
+    showMarkdownModal(content, event.element);
+  }
+});
+```
+
+**Unregister the callback:**
+
+```typescript
+viewer.onInspect(null); // Restore default copy behavior
+```
 
 ### Lower-Level Exports
 

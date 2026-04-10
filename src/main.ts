@@ -50,5 +50,22 @@ function initViewers(): ElixirDataViewer[] {
 // Initialize all viewers on page load
 const viewers = initViewers();
 
+if (viewers.length > 0) { viewers[0].toggleWordWrap(); }
+
+// Demo: onInspect callback on the first viewer
+if (viewers.length > 0) {
+
+  viewers[0].onInspect((event) => {
+    console.log(`[onInspect] type=${event.type}, copyText=${event.copyText}`);
+
+    // Demo: for String clicks, suppress copy and show an alert instead
+    if (event.type === "String") {
+      event.preventDefault();
+      const content = event.copyText.slice(1, -1); // strip surrounding quotes
+      console.log(`[onInspect] String content (copy suppressed): ${content}`);
+    }
+  });
+}
+
 // Expose for debugging
 (window as any).__viewers = viewers;

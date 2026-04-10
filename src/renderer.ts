@@ -3,7 +3,7 @@ import { highlight, getLineTokens, type HighlightToken } from "./highlighter";
 import { detectFoldRegions, buildFoldMap } from "./fold";
 import { FoldState } from "./state";
 import { SearchState, type SearchMatch } from "./search";
-import { resolveInspectTarget, type InspectTarget } from "./inspect";
+import { resolveInspectTarget, type InspectTarget, type InspectType } from "./inspect";
 import type { Tree } from "@lezer/common";
 
 /**
@@ -21,6 +21,25 @@ export interface ToolbarOptions {
   copy?: boolean;
   /** Show "Search" button. Default: true */
   search?: boolean;
+}
+
+/**
+ * Event object passed to the onInspect callback when the user clicks
+ * an inspectable value (string, atom, number, structure, etc.).
+ */
+export interface InspectEvent {
+  /** The semantic type of the inspected node (e.g. "String", "Atom", "Map") */
+  type: InspectType;
+  /** The text that would be copied to clipboard */
+  copyText: string;
+  /** The full InspectTarget with offset information */
+  target: InspectTarget;
+  /** The DOM element that was clicked */
+  element: HTMLElement;
+  /** The original MouseEvent from the click */
+  mouseEvent: MouseEvent;
+  /** Call this to prevent the default copy-to-clipboard + toast behavior */
+  preventDefault(): void;
 }
 
 /**
@@ -73,6 +92,7 @@ export class ElixirDataViewer {
 
   // Inspect state
   private currentInspect: InspectTarget | null = null;
+  private inspectCallback: ((event: InspectEvent) => void) | null = null;
 
   constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
@@ -988,7 +1008,18 @@ export class ElixirDataViewer {
   }
 
   /**
-   * Handle click on an inspected token — copy to clipboard.
+   * Register a callback invoked when the user clicks an inspectable value.
+   * The callback receives an InspectEvent with type, copyText, DOM element,
+   * and a preventDefault() method to suppress the default copy behavior.
+   *
+   * Pass `null` to unregister the callback and restore default behavior.
+   */
+  onInspect(callback: ((event: InspectEvent) => void) | null): void {
+    this.inspectCallback = callback;
+  }
+
+  /**
+   * Handle click on an inspected token — copy to clipboard (unless prevented by callback).
    */
   private handleInspectClick(e: Event): void {
     if (!this.currentInspect) return;
@@ -1005,13 +1036,31 @@ export class ElixirDataViewer {
     if (!inspectEl) return;
 
     const copyText = this.currentInspect.copyText;
-    this.copyToClipboard(copyText);
 
-    // Visual feedback: flash the highlighted elements
+    // Build the InspectEvent and call the callback if registered
+    let defaultPrevented = false;
+    if (this.inspectCallback) {
+      const inspectEvent: InspectEvent = {
+        type: this.currentInspect.type,
+        copyText,
+        target: this.currentInspect,
+        element: inspectEl,
+        mouseEvent: e as MouseEvent,
+        preventDefault() {
+          defaultPrevented = true;
+        },
+      };
+      this.inspectCallback(inspectEvent);
+    }
+
+    // Visual feedback: flash the highlighted elements (always, even if prevented)
     this.flashInspectHighlight();
 
-    // Show toast near the click
-    this.showInspectToast(e as MouseEvent);
+    // Only copy + toast if not prevented
+    if (!defaultPrevented) {
+      this.copyToClipboard(copyText);
+      this.showInspectToast(e as MouseEvent);
+    }
   }
 
   /**

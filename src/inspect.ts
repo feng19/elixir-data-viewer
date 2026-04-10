@@ -1,6 +1,26 @@
 import type { Tree, SyntaxNode } from "@lezer/common";
 
 /**
+ * The semantic type of an inspected node.
+ */
+export type InspectType =
+  | "String"
+  | "Atom"
+  | "Integer"
+  | "Float"
+  | "Boolean"
+  | "Nil"
+  | "Char"
+  | "Charlist"
+  | "Sigil"
+  | "Keyword"
+  | "Pair"
+  | "Map"
+  | "List"
+  | "Tuple"
+  | "Bitstring";
+
+/**
  * Represents a resolved inspect target — the range to highlight and copy.
  */
 export interface InspectTarget {
@@ -12,6 +32,8 @@ export interface InspectTarget {
   copyText: string;
   /** Whether this is a structural node that may span multiple lines */
   isStructure: boolean;
+  /** The semantic type of the inspected node */
+  type: InspectType;
 }
 
 /**
@@ -85,6 +107,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
         to: parent.to,
         copyText: code.slice(parent.from, parent.to),
         isStructure: true,
+        type: parent.type.name as InspectType,
       };
     }
   }
@@ -96,6 +119,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
       to: node.to,
       copyText: code.slice(node.from, node.to),
       isStructure: true,
+      type: name as InspectType,
     };
   }
 
@@ -108,6 +132,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
         to: parent.to,
         copyText: code.slice(parent.from, parent.to),
         isStructure: false,
+        type: parent.type.name as InspectType,
       };
     }
   }
@@ -119,6 +144,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
       to: node.to,
       copyText: code.slice(node.from, node.to),
       isStructure: false,
+      type: name as InspectType,
     };
   }
 
@@ -129,6 +155,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
       to: node.to,
       copyText: code.slice(node.from, node.to),
       isStructure: false,
+      type: "Keyword",
     };
   }
 
@@ -139,6 +166,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
       to: node.to,
       copyText: code.slice(node.from, node.to),
       isStructure: false,
+      type: "Pair",
     };
   }
 

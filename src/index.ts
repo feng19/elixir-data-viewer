@@ -15,7 +15,7 @@
 import "./styles/theme.css";
 
 export { ElixirDataViewer } from "./renderer";
-export type { ElixirDataViewerOptions, ToolbarOptions } from "./renderer";
+export type { ElixirDataViewerOptions, ToolbarOptions, InspectEvent } from "./renderer";
 export { parseElixir } from "./parser";
 export { highlight, getLineTokens } from "./highlighter";
 export type { HighlightToken } from "./highlighter";
@@ -25,4 +25,4 @@ export { FoldState } from "./state";
 export { SearchState } from "./search";
 export type { SearchMatch } from "./search";
 export { resolveInspectTarget } from "./inspect";
-export type { InspectTarget } from "./inspect";
+export type { InspectTarget, InspectType } from "./inspect";
