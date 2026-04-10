@@ -1,14 +1,14 @@
 /*
- * Elixir Data Viewer — VS Code High Contrast Dark Theme
+ * Elixir Data Viewer — Tokyo Night Theme
  *
- * Colors based on VS Code's High Contrast Dark color theme.
+ * Colors based on the tokyonight_night color scheme.
  */
 
 /* ===== Container ===== */
 .edv-container {
   position: relative;
-  background: #000000;
-  color: #ffffff;
+  background: #1a1b26;
+  color: #c0caf5;
   font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New",
     monospace;
   font-size: 14px;
@@ -31,8 +31,8 @@
 }
 
 .edv-line:hover {
-  background: #0d0d0d;
-  outline: 1px dashed #f38518;
+  background: #292e42;
+  outline: 1px dashed #3b4261;
 }
 
 /* ===== Gutter ===== */
@@ -49,7 +49,7 @@
 
 /* Line number */
 .edv-line-number {
-  color: #858585;
+  color: #3b4261;
   text-align: right;
   min-width: 2.5em;
   padding-right: 4px;
@@ -57,7 +57,7 @@
 }
 
 .edv-line:hover .edv-line-number {
-  color: #ffffff;
+  color: #737aa2;
 }
 
 /* ===== Fold indicator ===== */
@@ -74,7 +74,7 @@
 
 .edv-fold-indicator.edv-foldable {
   cursor: pointer;
-  color: #ffffff;
+  color: #565f89;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -95,7 +95,7 @@
   white-space: pre;
   padding-left: 8px;
   min-height: 20px;
-  border-left: 1px solid #6fc3df;
+  border-left: 1px solid #292e42;
 }
 
 /* ===== Word wrap mode ===== */
@@ -116,148 +116,159 @@
 /* ===== Fold ellipsis ===== */
 .edv-fold-ellipsis {
   display: inline-block;
-  background: #000000;
-  color: #ffffff;
+  background: #292e42;
+  color: #7aa2f7;
   padding: 0 4px;
   margin: 0 2px;
   border-radius: 3px;
   font-size: 12px;
   cursor: pointer;
-  border: 1px solid #6fc3df;
+  border: 1px solid #3b4261;
   line-height: 16px;
   vertical-align: middle;
 }
 
 .edv-fold-ellipsis:hover {
-  background: #1a1a1a;
-  color: #ffffff;
-  border-color: #f38518;
+  background: #33394e;
+  color: #7aa2f7;
+  border-color: #7aa2f7;
 }
 
 /* ===== Syntax highlighting tokens ===== */
+/*
+ * Class names are emitted by a custom tagHighlighter in highlighter.ts
+ * that maps lezer-elixir's styleTags to Elixir-specific tok-* classes.
+ * Colors follow the tokyonight_night color scheme.
+ */
 
-/* Atoms and keywords (Elixir atoms like :foo) */
+/* Atoms and keyword keys (:foo, key:) — string.special.symbol */
 .tok-atom {
-  color: #569cd6;
+  color: #2ac3de;
 }
 
-/* Module aliases (Elixir aliases like MyModule) */
+/* Module aliases (MyModule, Kernel) — module */
 .tok-namespace {
-  color: #4ec9b0;
+  color: #7dcfff;
 }
 
-/* Booleans: true, false */
+/* Booleans: true, false — boolean */
 .tok-bool {
-  color: #569cd6;
+  color: #ff9e64;
 }
 
-/* nil */
+/* nil — constant.builtin */
 .tok-null {
-  color: #569cd6;
+  color: #2ac3de;
 }
 
-/* Integers and floats */
+/* Numbers: integers and floats — number */
 .tok-number {
-  color: #b5cea8;
+  color: #ff9e64;
 }
 
-/* Character literals */
+/* Character literals (?a) — character */
 .tok-character {
-  color: #d7ba7d;
+  color: #9ece6a;
 }
 
-/* Variable names */
+/* Variable names (identifiers) — variable */
 .tok-variableName {
-  color: #9cdcfe;
+  color: #c0caf5;
 }
 
-/* Strings */
+/* Function calls (Enum.map, String.trim) — function.call */
+.tok-function {
+  color: #7aa2f7;
+}
+
+/* Function definitions (def foo, defp bar) — function */
+.tok-definition {
+  color: #7aa2f7;
+}
+
+/* Special identifiers (__MODULE__, __DIR__, __ENV__) — variable.builtin */
+.tok-special {
+  color: #f7768e;
+}
+
+/* Strings and charlists — string */
 .tok-string {
-  color: #ce9178;
+  color: #9ece6a;
 }
 
-/* Escape sequences */
+/* Escape sequences (\n, \t, \x{...}) — string.escape */
 .tok-escape {
-  color: #d7ba7d;
+  color: #bb9af7;
 }
 
-/* Keywords: do, end, fn, etc. */
+/* Keywords: do, end, fn, def, defmodule, when, not, etc. — keyword */
 .tok-keyword {
-  color: #c586c0;
+  color: #bb9af7;
 }
 
-/* Operators: +, -, |>, etc. */
+/* Operators: +, -, |>, ++, --, etc. — operator */
 .tok-operator {
-  color: #ffffff;
+  color: #89ddff;
 }
 
-/* Comments */
+/* Comments (#...) — comment */
 .tok-comment {
-  color: #7ca668;
+  color: #565f89;
   font-style: italic;
 }
 
-/* Punctuation: (), [], {}, etc. */
+/* Underscored identifiers (_foo, _bar) — dimmed like comments */
+.tok-underscore {
+  color: #565f89;
+  font-style: italic;
+}
+
+/* Punctuation: (), [], {}, % — punctuation.bracket */
 .tok-punctuation {
-  color: #ffffff;
+  color: #a9b1d6;
 }
 
-/* Separators: comma, semicolon */
+/* Separators: comma, semicolon — punctuation.delimiter */
 .tok-separator {
-  color: #ffffff;
+  color: #89ddff;
 }
 
-/* Angle brackets: <<, >> */
+/* Angle brackets: <<, >> — punctuation.special */
 .tok-angleBracket {
-  color: #ffffff;
+  color: #89ddff;
 }
 
-/* Function calls */
-.tok-function {
-  color: #dcdcaa;
-}
-
-/* Module attributes */
+/* Module attributes (@attr, @spec) — attribute */
 .tok-attributeName {
-  color: #9cdcfe;
+  color: #7dcfff;
 }
 
-/* Doc strings */
+/* Doc strings (@doc, @moduledoc, @typedoc) — string.documentation */
 .tok-docString {
-  color: #7ca668;
+  color: #e0af68;
 }
 
-/* Special variable names */
-.tok-special {
-  color: #dcdcaa;
-}
-
-/* Definition names */
-.tok-definition {
-  color: #dcdcaa;
-}
-
-/* ===== Scrollbar styling (VS Code-like) ===== */
+/* ===== Scrollbar styling ===== */
 .edv-container::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 .edv-container::-webkit-scrollbar-track {
-  background: #000000;
+  background: #1a1b26;
 }
 
 .edv-container::-webkit-scrollbar-thumb {
-  background: #6fc3df;
+  background: #3b4261;
   border-radius: 5px;
 }
 
 .edv-container::-webkit-scrollbar-thumb:hover {
-  background: #f38518;
+  background: #565f89;
 }
 
 .edv-container::-webkit-scrollbar-corner {
-  background: #000000;
+  background: #1a1b26;
 }
 
 /* ===== Floating Toolbar ===== */
@@ -268,8 +279,8 @@
   z-index: 10;
   display: flex;
   gap: 2px;
-  background: #000000;
-  border: 1px solid #6fc3df;
+  background: #1a1b26;
+  border: 1px solid #3b4261;
   border-radius: 4px;
   padding: 2px;
   margin-right: 14px;
@@ -286,7 +297,7 @@
 .edv-toolbar-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: #ffffff;
+  color: #a9b1d6;
   width: 26px;
   height: 24px;
   border-radius: 3px;
@@ -301,14 +312,15 @@
 }
 
 .edv-toolbar-btn:hover {
-  background: #000000;
-  border-color: #ffffff;
+  background: #292e42;
+  border-color: #565f89;
+  color: #c0caf5;
 }
 
 .edv-toolbar-btn.edv-toolbar-btn--active {
-  background: #000000;
-  border-color: #f38518;
-  color: #ffffff;
+  background: #292e42;
+  border-color: #7aa2f7;
+  color: #7aa2f7;
 }
 
 /* ===== Search Bar ===== */
@@ -320,8 +332,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #000000;
-  border-bottom: 1px solid #6fc3df;
+  background: #1a1b26;
+  border-bottom: 1px solid #3b4261;
   font-size: 13px;
 }
 
@@ -332,21 +344,21 @@
 .edv-search-input-wrapper {
   display: flex;
   align-items: center;
-  background: #000000;
-  border: 1px solid #6fc3df;
+  background: #1a1b26;
+  border: 1px solid #3b4261;
   border-radius: 3px;
   overflow: hidden;
 }
 
 .edv-search-input-wrapper:focus-within {
-  border-color: #f38518;
+  border-color: #7aa2f7;
 }
 
 .edv-search-input {
   background: transparent;
   border: none;
   outline: none;
-  color: #ffffff;
+  color: #c0caf5;
   font-family: inherit;
   font-size: 13px;
   padding: 3px 6px;
@@ -354,13 +366,13 @@
 }
 
 .edv-search-input::placeholder {
-  color: #858585;
+  color: #565f89;
 }
 
 .edv-search-case-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: #858585;
+  color: #565f89;
   cursor: pointer;
   font-size: 12px;
   font-family: inherit;
@@ -371,23 +383,23 @@
 }
 
 .edv-search-case-btn:hover {
-  color: #ffffff;
-  background: #000000;
-  border-color: #ffffff;
+  color: #c0caf5;
+  background: #292e42;
+  border-color: #565f89;
 }
 
 .edv-search-case-btn--active {
-  color: #ffffff;
-  background: #000000;
-  border-color: #f38518;
+  color: #7aa2f7;
+  background: #292e42;
+  border-color: #7aa2f7;
 }
 
 .edv-search-case-btn--active:hover {
-  border-color: #ffffff;
+  border-color: #c0caf5;
 }
 
 .edv-search-info {
-  color: #ffffff;
+  color: #c0caf5;
   font-size: 12px;
   min-width: 70px;
   text-align: center;
@@ -395,13 +407,13 @@
 }
 
 .edv-search-info--no-results {
-  color: #f48771;
+  color: #f7768e;
 }
 
 .edv-search-nav-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: #ffffff;
+  color: #a9b1d6;
   cursor: pointer;
   width: 24px;
   height: 24px;
@@ -416,23 +428,23 @@
 }
 
 .edv-search-nav-btn:hover {
-  background: #000000;
-  border-color: #ffffff;
+  background: #292e42;
+  border-color: #565f89;
 }
 
 /* ===== Search Highlights ===== */
 .edv-search-match {
-  background: rgba(234, 177, 54, 0.5);
+  background: rgba(224, 175, 104, 0.4);
   border-radius: 2px;
   color: inherit;
 }
 
 .edv-search-current {
-  background: rgba(234, 177, 54, 0.85);
+  background: rgba(224, 175, 104, 0.8);
   border-radius: 2px;
-  color: #000000;
+  color: #1a1b26;
 }
 
 .edv-line--has-match .edv-line-number {
-  color: #eab136;
+  color: #e0af68;
 }

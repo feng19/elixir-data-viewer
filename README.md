@@ -2,7 +2,7 @@
 
 A read-only web viewer for Elixir data structures with syntax highlighting, code folding, line numbers, and a VS Code Dark+ theme.
 
-Built with vanilla TypeScript + DOM — no CodeMirror, no React — powered by [`lezer-elixir`](https://github.com/nicklayb/lezer-elixir) for accurate parsing.
+Built with vanilla TypeScript + DOM — no CodeMirror, no React — powered by [`lezer-elixir`](https://github.com/livebook-dev/lezer-elixir) for accurate parsing.
 
 ## Features
 
