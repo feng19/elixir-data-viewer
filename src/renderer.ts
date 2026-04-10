@@ -43,6 +43,8 @@ export class ElixirDataViewer {
   private scrollEl: HTMLElement;
   private toolbarEl: HTMLElement | null = null;
   private wrapBtn: HTMLButtonElement | null = null;
+  private copyBtn: HTMLButtonElement | null = null;
+  private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
   private code: string = "";
   private lines: string[] = [];
   private lineOffsets: number[] = [];
@@ -102,8 +104,8 @@ export class ElixirDataViewer {
     }
 
     if (cfg.copy) {
-      const btn = this.createToolbarButton("⎘", "Copy", () => this.copyContent());
-      this.toolbarEl.appendChild(btn);
+      this.copyBtn = this.createToolbarButton("⎘", "Copy", () => this.copyContent());
+      this.toolbarEl.appendChild(this.copyBtn);
     }
 
     this.container.appendChild(this.toolbarEl);
@@ -171,6 +173,7 @@ export class ElixirDataViewer {
 
   /**
    * Copy the raw Elixir data content to the clipboard.
+   * Shows a "✓" feedback on the copy button for 2 seconds.
    * Returns a promise that resolves when copying is complete.
    */
   async copyContent(): Promise<void> {
@@ -187,6 +190,33 @@ export class ElixirDataViewer {
       document.execCommand("copy");
       document.body.removeChild(textarea);
     }
+    this.showCopyFeedback();
+  }
+
+  /**
+   * Show a brief "copied" feedback on the copy button.
+   */
+  private showCopyFeedback(): void {
+    if (!this.copyBtn) return;
+
+    // Clear any existing reset timer
+    if (this.copyResetTimer) {
+      clearTimeout(this.copyResetTimer);
+    }
+
+    const originalText = "⎘";
+    this.copyBtn.textContent = "✓";
+    this.copyBtn.classList.add("edv-toolbar-btn--active");
+    this.copyBtn.title = "Copied!";
+
+    this.copyResetTimer = setTimeout(() => {
+      if (this.copyBtn) {
+        this.copyBtn.textContent = originalText;
+        this.copyBtn.classList.remove("edv-toolbar-btn--active");
+        this.copyBtn.title = "Copy";
+      }
+      this.copyResetTimer = null;
+    }, 2000);
   }
 
   /**

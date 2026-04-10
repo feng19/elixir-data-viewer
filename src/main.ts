@@ -43,7 +43,6 @@ function initViewers(): ElixirDataViewer[] {
     viewers.push(viewer);
   });
 
-  viewers[0].toggleWordWrap();
   return viewers;
 }
 
