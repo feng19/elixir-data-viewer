@@ -72,6 +72,82 @@ Add `.edv-viewer` elements with `<script type="text/elixir-data">` blocks:
 </script>
 ```
 
+### Standalone / Phoenix (Single IIFE File)
+
+Build a single JS file with all dependencies and CSS bundled in:
+
+```bash
+npm run build:standalone
+```
+
+This produces `dist/elixir-data-viewer.iife.js` (~55 kB gzipped) — a single file that:
+- Bundles all dependencies (`lezer-elixir`, `@lezer/common`, `@lezer/highlight`)
+- Injects CSS automatically via `<style>` tag (no separate CSS file needed)
+- Exposes all exports on `window.ElixirDataViewer`
+
+#### Phoenix Integration
+
+1. Copy the built file into your Phoenix project:
+
+```bash
+cp dist/elixir-data-viewer.iife.js your_phoenix_app/assets/vendor/
+```
+
+2. Import it in your `assets/js/app.js`:
+
+```javascript
+import "../vendor/elixir-data-viewer.iife.js";
+```
+
+3. Create a LiveView Hook:
+
+```javascript
+let Hooks = {};
+
+Hooks.ElixirDataViewer = {
+  mounted() {
+    const viewer = new window.ElixirDataViewer.ElixirDataViewer(this.el);
+    viewer.setContent(this.el.dataset.content || this.el.innerText);
+    this.viewer = viewer;
+
+    // Optional: handle LiveView updates
+    this.handleEvent("update-viewer", ({ content }) => {
+      this.viewer.setContent(content);
+    });
+  },
+  updated() {
+    this.viewer.setContent(this.el.dataset.content || this.el.innerText);
+  },
+};
+
+// Pass hooks to LiveSocket
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: Hooks,
+  // ...
+});
+```
+
+4. Use in your LiveView template:
+
+```heex
+<div id="data-viewer" phx-hook="ElixirDataViewer" data-content={inspect(@data, pretty: true)}>
+</div>
+```
+
+#### Without a Build System
+
+You can also load the IIFE file directly via `<script>` tag:
+
+```html
+<script src="/vendor/elixir-data-viewer.iife.js"></script>
+<script>
+  const viewer = new ElixirDataViewer.ElixirDataViewer(
+    document.getElementById("viewer")
+  );
+  viewer.setContent('%{name: "Alice", age: 30}');
+</script>
+```
+
 ## API Reference
 
 ### `ElixirDataViewer`
@@ -228,8 +304,11 @@ npm install
 # Start dev server with hot reload
 npm run dev
 
-# Build for production
+# Build for production (library: ES + CJS)
 npm run build
+
+# Build standalone IIFE (single file with all deps + CSS)
+npm run build:standalone
 
 # Preview production build
 npm run preview
@@ -254,7 +333,8 @@ The dev server starts at `http://localhost:5173` with the demo page showing mult
 ├── package.json
 ├── tsconfig.json
 ├── tsconfig.build.json
-└── vite.config.ts
+├── vite.config.ts              # Library build config (ES + CJS)
+└── vite.config.standalone.ts   # Standalone IIFE build config (single file)
 ```
 
 ## License
