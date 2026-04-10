@@ -1,14 +1,14 @@
 /*
- * Elixir Data Viewer — VS Code Dark+ Theme
+ * Elixir Data Viewer — VS Code High Contrast Dark Theme
  *
- * Colors based on VS Code's default Dark+ color theme.
+ * Colors based on VS Code's High Contrast Dark color theme.
  */
 
 /* ===== Container ===== */
 .edv-container {
   position: relative;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: #000000;
+  color: #ffffff;
   font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New",
     monospace;
   font-size: 14px;
@@ -31,7 +31,8 @@
 }
 
 .edv-line:hover {
-  background: #2a2d2e;
+  background: #0d0d0d;
+  outline: 1px dashed #f38518;
 }
 
 /* ===== Gutter ===== */
@@ -56,7 +57,7 @@
 }
 
 .edv-line:hover .edv-line-number {
-  color: #c6c6c6;
+  color: #ffffff;
 }
 
 /* ===== Fold indicator ===== */
@@ -73,7 +74,7 @@
 
 .edv-fold-indicator.edv-foldable {
   cursor: pointer;
-  color: #c5c5c5;
+  color: #ffffff;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -94,7 +95,7 @@
   white-space: pre;
   padding-left: 8px;
   min-height: 20px;
-  border-left: 1px solid #333333;
+  border-left: 1px solid #6fc3df;
 }
 
 /* ===== Word wrap mode ===== */
@@ -115,22 +116,22 @@
 /* ===== Fold ellipsis ===== */
 .edv-fold-ellipsis {
   display: inline-block;
-  background: #3c3c3c;
-  color: #a0a0a0;
+  background: #000000;
+  color: #ffffff;
   padding: 0 4px;
   margin: 0 2px;
   border-radius: 3px;
   font-size: 12px;
   cursor: pointer;
-  border: 1px solid #555555;
+  border: 1px solid #6fc3df;
   line-height: 16px;
   vertical-align: middle;
 }
 
 .edv-fold-ellipsis:hover {
-  background: #505050;
-  color: #d4d4d4;
-  border-color: #777777;
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #f38518;
 }
 
 /* ===== Syntax highlighting tokens ===== */
@@ -187,28 +188,28 @@
 
 /* Operators: +, -, |>, etc. */
 .tok-operator {
-  color: #d4d4d4;
+  color: #ffffff;
 }
 
 /* Comments */
 .tok-comment {
-  color: #6a9955;
+  color: #7ca668;
   font-style: italic;
 }
 
 /* Punctuation: (), [], {}, etc. */
 .tok-punctuation {
-  color: #d4d4d4;
+  color: #ffffff;
 }
 
 /* Separators: comma, semicolon */
 .tok-separator {
-  color: #d4d4d4;
+  color: #ffffff;
 }
 
 /* Angle brackets: <<, >> */
 .tok-angleBracket {
-  color: #d4d4d4;
+  color: #ffffff;
 }
 
 /* Function calls */
@@ -223,7 +224,7 @@
 
 /* Doc strings */
 .tok-docString {
-  color: #608b4e;
+  color: #7ca668;
 }
 
 /* Special variable names */
@@ -243,20 +244,20 @@
 }
 
 .edv-container::-webkit-scrollbar-track {
-  background: #1e1e1e;
+  background: #000000;
 }
 
 .edv-container::-webkit-scrollbar-thumb {
-  background: #424242;
+  background: #6fc3df;
   border-radius: 5px;
 }
 
 .edv-container::-webkit-scrollbar-thumb:hover {
-  background: #4f4f4f;
+  background: #f38518;
 }
 
 .edv-container::-webkit-scrollbar-corner {
-  background: #1e1e1e;
+  background: #000000;
 }
 
 /* ===== Floating Toolbar ===== */
@@ -267,8 +268,8 @@
   z-index: 10;
   display: flex;
   gap: 2px;
-  background: rgba(37, 37, 38, 0.9);
-  border: 1px solid #3c3c3c;
+  background: #000000;
+  border: 1px solid #6fc3df;
   border-radius: 4px;
   padding: 2px;
   margin-right: 14px;
@@ -284,8 +285,8 @@
 
 .edv-toolbar-btn {
   background: transparent;
-  border: none;
-  color: #cccccc;
+  border: 1px solid transparent;
+  color: #ffffff;
   width: 26px;
   height: 24px;
   border-radius: 3px;
@@ -300,11 +301,13 @@
 }
 
 .edv-toolbar-btn:hover {
-  background: #3c3c3c;
+  background: #000000;
+  border-color: #ffffff;
 }
 
 .edv-toolbar-btn.edv-toolbar-btn--active {
-  background: #0e639c;
+  background: #000000;
+  border-color: #f38518;
   color: #ffffff;
 }
 
@@ -317,8 +320,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #252526;
-  border-bottom: 1px solid #3c3c3c;
+  background: #000000;
+  border-bottom: 1px solid #6fc3df;
   font-size: 13px;
 }
 
@@ -329,21 +332,21 @@
 .edv-search-input-wrapper {
   display: flex;
   align-items: center;
-  background: #3c3c3c;
-  border: 1px solid #555555;
+  background: #000000;
+  border: 1px solid #6fc3df;
   border-radius: 3px;
   overflow: hidden;
 }
 
 .edv-search-input-wrapper:focus-within {
-  border-color: #007acc;
+  border-color: #f38518;
 }
 
 .edv-search-input {
   background: transparent;
   border: none;
   outline: none;
-  color: #d4d4d4;
+  color: #ffffff;
   font-family: inherit;
   font-size: 13px;
   padding: 3px 6px;
@@ -356,7 +359,7 @@
 
 .edv-search-case-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #858585;
   cursor: pointer;
   font-size: 12px;
@@ -368,21 +371,23 @@
 }
 
 .edv-search-case-btn:hover {
-  color: #d4d4d4;
-  background: #505050;
+  color: #ffffff;
+  background: #000000;
+  border-color: #ffffff;
 }
 
 .edv-search-case-btn--active {
   color: #ffffff;
-  background: #0e639c;
+  background: #000000;
+  border-color: #f38518;
 }
 
 .edv-search-case-btn--active:hover {
-  background: #1177bb;
+  border-color: #ffffff;
 }
 
 .edv-search-info {
-  color: #858585;
+  color: #ffffff;
   font-size: 12px;
   min-width: 70px;
   text-align: center;
@@ -395,8 +400,8 @@
 
 .edv-search-nav-btn {
   background: transparent;
-  border: none;
-  color: #cccccc;
+  border: 1px solid transparent;
+  color: #ffffff;
   cursor: pointer;
   width: 24px;
   height: 24px;
@@ -411,21 +416,21 @@
 }
 
 .edv-search-nav-btn:hover {
-  background: #3c3c3c;
+  background: #000000;
+  border-color: #ffffff;
 }
 
 /* ===== Search Highlights ===== */
 .edv-search-match {
-  background: rgba(234, 177, 54, 0.35);
+  background: rgba(234, 177, 54, 0.5);
   border-radius: 2px;
   color: inherit;
 }
 
 .edv-search-current {
-  background: rgba(234, 177, 54, 0.75);
-  border: 1px solid #eab136;
+  background: rgba(234, 177, 54, 0.85);
   border-radius: 2px;
-  color: inherit;
+  color: #000000;
 }
 
 .edv-line--has-match .edv-line-number {
