@@ -93,4 +93,17 @@ export class FoldState {
   unfoldAll(): void {
     this.foldedLines.clear();
   }
+
+  /**
+   * Reveal a specific line by unfolding any region that hides it.
+   * This ensures the line becomes visible in the rendered output.
+   */
+  revealLine(line: number): void {
+    for (const startLine of this.foldedLines) {
+      const region = this.regionMap.get(startLine);
+      if (region && line > region.startLine && line <= region.endLine) {
+        this.foldedLines.delete(startLine);
+      }
+    }
+  }
 }

@@ -307,3 +307,127 @@
   background: #0e639c;
   color: #ffffff;
 }
+
+/* ===== Search Bar ===== */
+.edv-search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
+  font-size: 13px;
+}
+
+.edv-search-bar--visible {
+  display: flex;
+}
+
+.edv-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #3c3c3c;
+  border: 1px solid #555555;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.edv-search-input-wrapper:focus-within {
+  border-color: #007acc;
+}
+
+.edv-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #d4d4d4;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 3px 6px;
+  width: 180px;
+}
+
+.edv-search-input::placeholder {
+  color: #858585;
+}
+
+.edv-search-case-btn {
+  background: transparent;
+  border: none;
+  color: #858585;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-right: 2px;
+  line-height: 1;
+}
+
+.edv-search-case-btn:hover {
+  color: #d4d4d4;
+  background: #505050;
+}
+
+.edv-search-case-btn--active {
+  color: #ffffff;
+  background: #0e639c;
+}
+
+.edv-search-case-btn--active:hover {
+  background: #1177bb;
+}
+
+.edv-search-info {
+  color: #858585;
+  font-size: 12px;
+  min-width: 70px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.edv-search-info--no-results {
+  color: #f48771;
+}
+
+.edv-search-nav-btn {
+  background: transparent;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  padding: 0;
+  line-height: 1;
+}
+
+.edv-search-nav-btn:hover {
+  background: #3c3c3c;
+}
+
+/* ===== Search Highlights ===== */
+.edv-search-match {
+  background: rgba(234, 177, 54, 0.35);
+  border-radius: 2px;
+  color: inherit;
+}
+
+.edv-search-current {
+  background: rgba(234, 177, 54, 0.75);
+  border: 1px solid #eab136;
+  border-radius: 2px;
+  color: inherit;
+}
+
+.edv-line--has-match .edv-line-number {
+  color: #eab136;
+}

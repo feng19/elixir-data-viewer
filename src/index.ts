@@ -22,3 +22,5 @@ export type { HighlightToken } from "./highlighter";
 export { detectFoldRegions, buildFoldMap } from "./fold";
 export type { FoldRegion } from "./fold";
 export { FoldState } from "./state";
+export { SearchState } from "./search";
+export type { SearchMatch } from "./search";

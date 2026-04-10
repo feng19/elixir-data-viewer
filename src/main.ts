@@ -25,6 +25,7 @@ function initViewers(): ElixirDataViewer[] {
       "data-toolbar-unfold-all": "unfoldAll",
       "data-toolbar-word-wrap": "wordWrap",
       "data-toolbar-copy": "copy",
+      "data-toolbar-search": "search",
     };
 
     for (const [attr, key] of Object.entries(attrMap)) {
