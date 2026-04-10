@@ -3,6 +3,8 @@ import { highlight, getLineTokens, type HighlightToken } from "./highlighter";
 import { detectFoldRegions, buildFoldMap } from "./fold";
 import { FoldState } from "./state";
 import { SearchState, type SearchMatch } from "./search";
+import { resolveInspectTarget, type InspectTarget } from "./inspect";
+import type { Tree } from "@lezer/common";
 
 /**
  * Toolbar button visibility options.
@@ -55,6 +57,7 @@ export class ElixirDataViewer {
   private lines: string[] = [];
   private lineOffsets: number[] = [];
   private tokens: HighlightToken[] = [];
+  private tree: Tree | null = null;
   private foldState: FoldState = new FoldState();
   private searchState: SearchState = new SearchState();
   private onRenderCallback: (() => void) | null = null;
@@ -67,6 +70,9 @@ export class ElixirDataViewer {
   private searchInfoEl: HTMLElement | null = null;
   private searchCaseBtn: HTMLButtonElement | null = null;
   private searchVisible: boolean = false;
+
+  // Inspect state
+  private currentInspect: InspectTarget | null = null;
 
   constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
@@ -96,6 +102,11 @@ export class ElixirDataViewer {
     this.scrollEl = document.createElement("div");
     this.scrollEl.classList.add("edv-scroll");
     this.innerEl.appendChild(this.scrollEl);
+
+    // Inspect: hover and click event delegation on scroll container
+    this.scrollEl.addEventListener("mouseover", (e) => this.handleInspectHover(e));
+    this.scrollEl.addEventListener("mouseout", (e) => this.handleInspectOut(e));
+    this.scrollEl.addEventListener("click", (e) => this.handleInspectClick(e));
 
     // Keyboard shortcut: Cmd/Ctrl+F to open search
     this.container.setAttribute("tabindex", "0");
@@ -529,8 +540,9 @@ export class ElixirDataViewer {
     this.lines = code.split("\n");
     this.buildLineOffsets();
 
-    // Parse and analyze
+    // Parse and analyze — retain tree for inspect
     const tree = parseElixir(code);
+    this.tree = tree;
     this.tokens = highlight(code, tree);
     const regions = detectFoldRegions(code, tree);
     const regionMap = buildFoldMap(regions);
@@ -692,7 +704,7 @@ export class ElixirDataViewer {
 
     if (searchMatches.length === 0) {
       // No search matches — render as before
-      this.renderTokenizedText(codeEl, lineText, lineTokens);
+      this.renderTokenizedText(codeEl, lineText, lineTokens, lineStart);
       return;
     }
 
@@ -707,22 +719,35 @@ export class ElixirDataViewer {
   private renderTokenizedText(
     codeEl: HTMLElement,
     lineText: string,
-    lineTokens: HighlightToken[]
+    lineTokens: HighlightToken[],
+    lineStart?: number
   ): void {
+    const absStart = lineStart ?? 0;
+
     if (lineTokens.length === 0) {
-      codeEl.textContent = lineText;
+      // Wrap in a span with data-from/data-to for inspect targeting
+      const span = document.createElement("span");
+      span.dataset.from = String(absStart);
+      span.dataset.to = String(absStart + lineText.length);
+      span.textContent = lineText;
+      codeEl.appendChild(span);
       return;
     }
 
     let pos = 0;
     for (const tok of lineTokens) {
       if (tok.from > pos) {
-        const textNode = document.createTextNode(lineText.slice(pos, tok.from));
-        codeEl.appendChild(textNode);
+        const span = document.createElement("span");
+        span.dataset.from = String(absStart + pos);
+        span.dataset.to = String(absStart + tok.from);
+        span.textContent = lineText.slice(pos, tok.from);
+        codeEl.appendChild(span);
       }
 
       const span = document.createElement("span");
       span.className = tok.classes;
+      span.dataset.from = String(absStart + tok.from);
+      span.dataset.to = String(absStart + tok.to);
       span.textContent = lineText.slice(tok.from, tok.to);
       codeEl.appendChild(span);
 
@@ -730,8 +755,11 @@ export class ElixirDataViewer {
     }
 
     if (pos < lineText.length) {
-      const textNode = document.createTextNode(lineText.slice(pos));
-      codeEl.appendChild(textNode);
+      const span = document.createElement("span");
+      span.dataset.from = String(absStart + pos);
+      span.dataset.to = String(absStart + lineText.length);
+      span.textContent = lineText.slice(pos);
+      codeEl.appendChild(span);
     }
   }
 
@@ -795,9 +823,12 @@ export class ElixirDataViewer {
       segStart = segEnd;
     }
 
-    // Render segments
+    // Render segments — all wrapped in spans with data-from/data-to for inspect
+    const lineStart = this.lineOffsets[lineIdx];
     for (const seg of segments) {
       const text = lineText.slice(seg.from, seg.to);
+      const absFrom = lineStart + seg.from;
+      const absTo = lineStart + seg.to;
 
       if (seg.isMatch) {
         const mark = document.createElement("mark");
@@ -805,6 +836,8 @@ export class ElixirDataViewer {
         if (seg.isCurrent) {
           mark.classList.add("edv-search-current");
         }
+        mark.dataset.from = String(absFrom);
+        mark.dataset.to = String(absTo);
 
         if (seg.tokenClass) {
           const inner = document.createElement("span");
@@ -819,10 +852,16 @@ export class ElixirDataViewer {
       } else if (seg.tokenClass) {
         const span = document.createElement("span");
         span.className = seg.tokenClass;
+        span.dataset.from = String(absFrom);
+        span.dataset.to = String(absTo);
         span.textContent = text;
         codeEl.appendChild(span);
       } else {
-        codeEl.appendChild(document.createTextNode(text));
+        const span = document.createElement("span");
+        span.dataset.from = String(absFrom);
+        span.dataset.to = String(absTo);
+        span.textContent = text;
+        codeEl.appendChild(span);
       }
     }
   }
@@ -845,14 +884,17 @@ export class ElixirDataViewer {
     let pos = 0;
     for (const tok of lineTokens) {
       if (tok.from > pos) {
-        const textNode = document.createTextNode(
-          lineText.slice(pos, tok.from)
-        );
-        codeEl.appendChild(textNode);
+        const span = document.createElement("span");
+        span.dataset.from = String(lineStart + pos);
+        span.dataset.to = String(lineStart + tok.from);
+        span.textContent = lineText.slice(pos, tok.from);
+        codeEl.appendChild(span);
       }
 
       const span = document.createElement("span");
       span.className = tok.classes;
+      span.dataset.from = String(lineStart + tok.from);
+      span.dataset.to = String(lineStart + tok.to);
       span.textContent = lineText.slice(tok.from, tok.to);
       codeEl.appendChild(span);
 
@@ -860,15 +902,20 @@ export class ElixirDataViewer {
     }
 
     if (pos < lineText.length) {
-      const textNode = document.createTextNode(lineText.slice(pos));
-      codeEl.appendChild(textNode);
+      const span = document.createElement("span");
+      span.dataset.from = String(lineStart + pos);
+      span.dataset.to = String(lineStart + lineText.length);
+      span.textContent = lineText.slice(pos);
+      codeEl.appendChild(span);
     }
 
-    // Add the fold ellipsis
+    // Add the fold ellipsis — carries the full structure range for inspect
     const ellipsis = document.createElement("span");
     ellipsis.classList.add("edv-fold-ellipsis");
     ellipsis.textContent = "…";
     ellipsis.title = `${region.endLine - region.startLine} lines folded`;
+    ellipsis.dataset.from = String(region.startOffset);
+    ellipsis.dataset.to = String(region.endOffset);
     ellipsis.addEventListener("click", (e) => {
       e.stopPropagation();
       this.foldState.toggle(lineIdx);
@@ -876,10 +923,228 @@ export class ElixirDataViewer {
     });
     codeEl.appendChild(ellipsis);
 
-    // Add the closing bracket
+    // Add the closing bracket — carries offset for the close bracket
     const closeSpan = document.createElement("span");
     closeSpan.classList.add("tok-punctuation");
+    closeSpan.dataset.from = String(region.endOffset - region.closeText.length);
+    closeSpan.dataset.to = String(region.endOffset);
     closeSpan.textContent = region.closeText;
     codeEl.appendChild(closeSpan);
+  }
+
+  // ─── Inspect (Hover + Click-to-Copy) ──────────────────────────────────
+
+  /**
+   * Handle mouseover on spans to resolve inspect target and apply highlight.
+   */
+  private handleInspectHover(e: Event): void {
+    const target = (e as MouseEvent).target as HTMLElement;
+    if (!target || !this.tree) return;
+
+    // Find the nearest element with data-from
+    const el = target.closest<HTMLElement>("[data-from]");
+    if (!el) {
+      this.clearInspectHighlight();
+      return;
+    }
+
+    const from = parseInt(el.dataset.from!, 10);
+    if (isNaN(from)) return;
+
+    // Resolve what to inspect at this offset
+    const inspectTarget = resolveInspectTarget(this.tree, this.code, from);
+    if (!inspectTarget) {
+      this.clearInspectHighlight();
+      return;
+    }
+
+    // Check if target changed (avoid redundant DOM work)
+    if (
+      this.currentInspect &&
+      this.currentInspect.from === inspectTarget.from &&
+      this.currentInspect.to === inspectTarget.to
+    ) {
+      return;
+    }
+
+    this.clearInspectHighlight();
+    this.currentInspect = inspectTarget;
+    this.applyInspectHighlight(inspectTarget);
+  }
+
+  /**
+   * Handle mouseout — clear highlight when leaving the scroll area.
+   */
+  private handleInspectOut(e: Event): void {
+    const mouseEvent = e as MouseEvent;
+    const relatedTarget = mouseEvent.relatedTarget as HTMLElement | null;
+
+    // Only clear if we're leaving the scroll container entirely
+    if (relatedTarget && this.scrollEl.contains(relatedTarget)) {
+      return;
+    }
+
+    this.clearInspectHighlight();
+  }
+
+  /**
+   * Handle click on an inspected token — copy to clipboard.
+   */
+  private handleInspectClick(e: Event): void {
+    if (!this.currentInspect) return;
+
+    const target = (e as MouseEvent).target as HTMLElement;
+    if (!target) return;
+
+    // Don't interfere with fold toggle clicks
+    const el = target.closest<HTMLElement>(".edv-fold-indicator, .edv-fold-ellipsis");
+    if (el && !el.dataset.from) return;
+
+    // Check we're clicking on something with data-from (an inspectable element)
+    const inspectEl = target.closest<HTMLElement>("[data-from]");
+    if (!inspectEl) return;
+
+    const copyText = this.currentInspect.copyText;
+    this.copyToClipboard(copyText);
+
+    // Visual feedback: flash the highlighted elements
+    this.flashInspectHighlight();
+
+    // Show toast near the click
+    this.showInspectToast(e as MouseEvent);
+  }
+
+  /**
+   * Apply highlight CSS classes to all spans within the inspect target range.
+   */
+  private applyInspectHighlight(target: InspectTarget): void {
+    if (target.isStructure) {
+      // Highlight all lines that overlap with the structure range
+      const startLine = this.offsetToLine(target.from);
+      const endLine = this.offsetToLine(target.to - 1);
+
+      const lineEls = this.scrollEl.querySelectorAll<HTMLElement>(".edv-line");
+      for (const lineEl of lineEls) {
+        const lineIdx = parseInt(lineEl.dataset.line!, 10);
+        if (isNaN(lineIdx)) continue;
+        if (lineIdx >= startLine && lineIdx <= endLine) {
+          lineEl.classList.add("edv-inspect-line");
+        }
+      }
+
+      // Also highlight the bracket spans specifically
+      this.highlightSpansInRange(target.from, target.to, "edv-inspect-bracket");
+    } else {
+      // Highlight just the specific token spans
+      this.highlightSpansInRange(target.from, target.to, "edv-inspect-token");
+    }
+  }
+
+  /**
+   * Add a CSS class to all spans whose data-from/data-to overlap the given range.
+   */
+  private highlightSpansInRange(from: number, to: number, className: string): void {
+    const spans = this.scrollEl.querySelectorAll<HTMLElement>("[data-from]");
+    for (const span of spans) {
+      const spanFrom = parseInt(span.dataset.from!, 10);
+      const spanTo = parseInt(span.dataset.to!, 10);
+      if (isNaN(spanFrom) || isNaN(spanTo)) continue;
+
+      // Check overlap
+      if (spanFrom < to && spanTo > from) {
+        span.classList.add(className);
+      }
+    }
+  }
+
+  /**
+   * Clear all inspect highlight classes.
+   */
+  private clearInspectHighlight(): void {
+    if (!this.currentInspect) return;
+
+    // Remove line highlights
+    const lineEls = this.scrollEl.querySelectorAll<HTMLElement>(".edv-inspect-line");
+    for (const el of lineEls) {
+      el.classList.remove("edv-inspect-line");
+    }
+
+    // Remove token highlights
+    const tokenEls = this.scrollEl.querySelectorAll<HTMLElement>(
+      ".edv-inspect-token, .edv-inspect-bracket"
+    );
+    for (const el of tokenEls) {
+      el.classList.remove("edv-inspect-token", "edv-inspect-bracket");
+    }
+
+    this.currentInspect = null;
+  }
+
+  /**
+   * Flash animation on currently highlighted elements.
+   */
+  private flashInspectHighlight(): void {
+    const els = this.scrollEl.querySelectorAll<HTMLElement>(
+      ".edv-inspect-token, .edv-inspect-bracket"
+    );
+    for (const el of els) {
+      el.classList.add("edv-inspect-copied");
+      el.addEventListener(
+        "animationend",
+        () => el.classList.remove("edv-inspect-copied"),
+        { once: true }
+      );
+    }
+  }
+
+  /**
+   * Show a small floating "Copied!" toast near the mouse click position.
+   */
+  private showInspectToast(e: MouseEvent): void {
+    const toast = document.createElement("div");
+    toast.classList.add("edv-copied-toast");
+    toast.textContent = "Copied!";
+    toast.style.left = `${e.clientX + 8}px`;
+    toast.style.top = `${e.clientY - 24}px`;
+    document.body.appendChild(toast);
+
+    toast.addEventListener("animationend", () => {
+      toast.remove();
+    });
+  }
+
+  /**
+   * Copy text to clipboard with fallback.
+   */
+  private async copyToClipboard(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+  }
+
+  /**
+   * Convert an absolute character offset to a 0-indexed line number.
+   */
+  private offsetToLine(offset: number): number {
+    let lo = 0;
+    let hi = this.lineOffsets.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (this.lineOffsets[mid] <= offset) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return lo;
   }
 }

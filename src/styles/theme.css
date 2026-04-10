@@ -454,3 +454,60 @@
 .edv-line--has-match .edv-line-number {
   color: #e0af68;
 }
+
+/* ===== Inspect (Hover Highlight + Click-to-Copy) ===== */
+
+/* Pointer cursor on all inspectable spans */
+.edv-code [data-from] {
+  cursor: pointer;
+}
+
+/* Leaf value highlight — single token */
+.edv-inspect-token {
+  background: rgba(122, 162, 247, 0.2);
+  border-radius: 2px;
+  outline: 1px solid rgba(122, 162, 247, 0.4);
+}
+
+/* Structure highlight — full line background */
+.edv-line.edv-inspect-line {
+  background: rgba(122, 162, 247, 0.06);
+}
+
+/* Structure bracket highlight — bolder than line bg */
+.edv-inspect-bracket {
+  background: rgba(122, 162, 247, 0.2);
+  border-radius: 2px;
+  outline: 1px solid rgba(122, 162, 247, 0.35);
+}
+
+/* Copy feedback flash animation */
+@keyframes edv-inspect-flash {
+  0%   { background-color: rgba(122, 162, 247, 0.45); }
+  100% { background-color: rgba(122, 162, 247, 0.2); }
+}
+
+.edv-inspect-copied {
+  animation: edv-inspect-flash 0.4s ease-out;
+}
+
+/* Floating "Copied!" toast indicator */
+.edv-copied-toast {
+  position: fixed;
+  background: #292e42;
+  color: #7aa2f7;
+  border: 1px solid #7aa2f7;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: none;
+  z-index: 100;
+  animation: edv-toast-fade 1.2s ease-out forwards;
+}
+
+@keyframes edv-toast-fade {
+  0%   { opacity: 1; transform: translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}

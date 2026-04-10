@@ -24,3 +24,5 @@ export type { FoldRegion } from "./fold";
 export { FoldState } from "./state";
 export { SearchState } from "./search";
 export type { SearchMatch } from "./search";
+export { resolveInspectTarget } from "./inspect";
+export type { InspectTarget } from "./inspect";
