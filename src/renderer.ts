@@ -44,6 +44,7 @@ interface ResolvedToolbar {
  */
 export class ElixirDataViewer {
   private container: HTMLElement;
+  private innerEl: HTMLElement;
   private scrollEl: HTMLElement;
   private toolbarEl: HTMLElement | null = null;
   private wrapBtn: HTMLButtonElement | null = null;
@@ -81,15 +82,20 @@ export class ElixirDataViewer {
       search: tb.search !== false,
     };
 
-    // Build toolbar if any button is enabled
+    // Build toolbar (positioned absolutely, does not scroll)
     this.buildToolbar();
 
-    // Build search bar (hidden initially)
+    // Build search bar (sits above the scrollable area)
     this.buildSearchBar();
+
+    // Inner wrapper handles scrolling
+    this.innerEl = document.createElement("div");
+    this.innerEl.classList.add("edv-inner");
+    this.container.appendChild(this.innerEl);
 
     this.scrollEl = document.createElement("div");
     this.scrollEl.classList.add("edv-scroll");
-    this.container.appendChild(this.scrollEl);
+    this.innerEl.appendChild(this.scrollEl);
 
     // Keyboard shortcut: Cmd/Ctrl+F to open search
     this.container.setAttribute("tabindex", "0");

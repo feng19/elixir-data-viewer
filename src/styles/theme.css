@@ -14,9 +14,17 @@
   font-size: 14px;
   line-height: 20px;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   tab-size: 2;
   -moz-tab-size: 2;
+}
+
+.edv-inner {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .edv-scroll {
@@ -249,33 +257,33 @@
 }
 
 /* ===== Scrollbar styling ===== */
-.edv-container::-webkit-scrollbar {
+.edv-inner::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.edv-container::-webkit-scrollbar-track {
+.edv-inner::-webkit-scrollbar-track {
   background: #1a1b26;
 }
 
-.edv-container::-webkit-scrollbar-thumb {
+.edv-inner::-webkit-scrollbar-thumb {
   background: #3b4261;
   border-radius: 5px;
 }
 
-.edv-container::-webkit-scrollbar-thumb:hover {
+.edv-inner::-webkit-scrollbar-thumb:hover {
   background: #565f89;
 }
 
-.edv-container::-webkit-scrollbar-corner {
+.edv-inner::-webkit-scrollbar-corner {
   background: #1a1b26;
 }
 
 /* ===== Floating Toolbar ===== */
 .edv-toolbar {
-  position: sticky;
+  position: absolute;
   top: 4px;
-  float: right;
+  right: 14px;
   z-index: 10;
   display: flex;
   gap: 2px;
@@ -283,7 +291,6 @@
   border: 1px solid #3b4261;
   border-radius: 4px;
   padding: 2px;
-  margin-right: 14px;
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
@@ -325,8 +332,7 @@
 
 /* ===== Search Bar ===== */
 .edv-search-bar {
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 20;
   display: none;
   align-items: center;
