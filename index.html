@@ -14,6 +14,7 @@
       height: 100%;
       background: #1E1E1E;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #CCCCCC;
     }
     #app {
       height: 100%;
@@ -24,11 +25,11 @@
       padding: 12px 20px;
       background: #252526;
       border-bottom: 1px solid #3C3C3C;
-      color: #CCCCCC;
       font-size: 13px;
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-shrink: 0;
     }
     .header h1 {
       font-size: 13px;
@@ -42,32 +43,33 @@
       border-radius: 3px;
       font-size: 11px;
     }
-    .header .spacer {
+    .viewers {
       flex: 1;
-    }
-    .header .toolbar-btn {
-      background: transparent;
-      border: 1px solid transparent;
-      color: #CCCCCC;
-      padding: 4px 8px;
-      border-radius: 3px;
-      font-size: 12px;
-      cursor: pointer;
-      font-family: inherit;
       display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .header .toolbar-btn:hover {
+      flex-direction: column;
+      overflow: hidden;
+      gap: 1px;
       background: #3C3C3C;
     }
-    .header .toolbar-btn.active {
-      background: #0E639C;
-      color: #FFFFFF;
-    }
-    #viewer-container {
+    .viewer-wrapper {
       flex: 1;
-      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #1E1E1E;
+    }
+    .viewer-title {
+      padding: 6px 16px;
+      background: #252526;
+      border-bottom: 1px solid #3C3C3C;
+      font-size: 12px;
+      color: #969696;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .edv-viewer {
+      flex: 1;
+      min-height: 0;
     }
   </style>
 </head>
@@ -76,10 +78,109 @@
     <div class="header">
       <h1>Elixir Data Viewer</h1>
       <span class="badge">read-only</span>
-      <span class="spacer"></span>
-      <button id="btn-word-wrap" class="toolbar-btn" title="Toggle Word Wrap (Alt+Z)">↩ Wrap</button>
     </div>
-    <div id="viewer-container"></div>
+    <div class="viewers">
+      <!-- Viewer 1: Complex nested data -->
+      <div class="viewer-wrapper">
+        <div class="viewer-title">data/users.exs</div>
+        <div class="edv-viewer">
+          <script type="text/elixir-data">
+%{
+  users: [
+    %{
+      name: "Alice",
+      age: 30,
+      email: "alice@example.com",
+      roles: [:admin, :user],
+      metadata: %{
+        login_count: 42,
+        last_login: ~N[2024-01-15 10:30:00],
+        preferences: %{
+          theme: "dark",
+          language: "en"
+        }
+      }
+    },
+    %{
+      name: "Bob",
+      age: 25,
+      email: "bob@example.com",
+      roles: [:user],
+      metadata: %{
+        login_count: 7,
+        last_login: ~N[2024-01-14 08:15:00],
+        preferences: %{
+          theme: "light",
+          language: "ja"
+        }
+      }
+    }
+  ],
+  total: 2,
+  page: 1,
+  active: true,
+  tags: {"elixir", "data", "viewer"},
+  config: [
+    timeout: 5000,
+    retries: 3,
+    base_url: "https://api.example.com"
+  ],
+  status: :ok,
+  ratio: 3.14,
+  char_code: ?A,
+  nil_value: nil,
+  binary: <<104, 101, 108, 108, 111>>,
+  big_binary: <<104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 32, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111>>,
+  string_with_escapes: "Line1\nLine2\tTabbed\"Quote\"",
+  big_string: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+  keywords: [
+    foo: "bar",
+    baz: 123
+  ],
+  nested_list: [
+    [1, 2, 3],
+    [4, 5, 6],
+    [
+      [7, 8],
+      [9, 10]
+    ]
+  ]
+}
+          </script>
+        </div>
+      </div>
+
+      <!-- Viewer 2: Simple data (no copy button demo) -->
+      <div class="viewer-wrapper">
+        <div class="viewer-title">data/config.exs</div>
+        <div class="edv-viewer" data-toolbar-copy="false">
+          <script type="text/elixir-data">
+[
+  database: %{
+    adapter: :postgres,
+    hostname: "localhost",
+    port: 5432,
+    database: "myapp_dev",
+    pool_size: 10
+  },
+  endpoint: %{
+    url: [host: "localhost"],
+    secret_key_base: "super_secret_key_base_value_here",
+    render_errors: [
+      formats: [html: MyApp.ErrorHTML, json: MyApp.ErrorJSON],
+      layout: false
+    ]
+  },
+  mailer: %{
+    adapter: :swoosh,
+    api_key: nil,
+    domain: "example.com"
+  }
+]
+          </script>
+        </div>
+      </div>
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

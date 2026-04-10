@@ -4,12 +4,45 @@ import { detectFoldRegions, buildFoldMap } from "./fold";
 import { FoldState } from "./state";
 
 /**
+ * Toolbar button visibility options.
+ * All buttons default to `true` (visible).
+ */
+export interface ToolbarOptions {
+  /** Show "Fold All" button. Default: true */
+  foldAll?: boolean;
+  /** Show "Unfold All" button. Default: true */
+  unfoldAll?: boolean;
+  /** Show "Word Wrap" toggle button. Default: true */
+  wordWrap?: boolean;
+  /** Show "Copy" button. Default: true */
+  copy?: boolean;
+}
+
+/**
+ * Configuration options for ElixirDataViewer.
+ */
+export interface ElixirDataViewerOptions {
+  /** Toolbar button visibility. All default to true. */
+  toolbar?: ToolbarOptions;
+}
+
+/** Resolved toolbar config with defaults applied */
+interface ResolvedToolbar {
+  foldAll: boolean;
+  unfoldAll: boolean;
+  wordWrap: boolean;
+  copy: boolean;
+}
+
+/**
  * ElixirDataViewer — A read-only Elixir data viewer with syntax highlighting,
- * line numbers, and code folding.
+ * line numbers, code folding, and a floating toolbar.
  */
 export class ElixirDataViewer {
   private container: HTMLElement;
   private scrollEl: HTMLElement;
+  private toolbarEl: HTMLElement | null = null;
+  private wrapBtn: HTMLButtonElement | null = null;
   private code: string = "";
   private lines: string[] = [];
   private lineOffsets: number[] = [];
@@ -17,14 +50,82 @@ export class ElixirDataViewer {
   private foldState: FoldState = new FoldState();
   private onRenderCallback: (() => void) | null = null;
   private wordWrap: boolean = false;
+  private toolbarConfig: ResolvedToolbar;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
     this.container.classList.add("edv-container");
+
+    // Resolve toolbar options with defaults
+    const tb = options?.toolbar ?? {};
+    this.toolbarConfig = {
+      foldAll: tb.foldAll !== false,
+      unfoldAll: tb.unfoldAll !== false,
+      wordWrap: tb.wordWrap !== false,
+      copy: tb.copy !== false,
+    };
+
+    // Build toolbar if any button is enabled
+    this.buildToolbar();
 
     this.scrollEl = document.createElement("div");
     this.scrollEl.classList.add("edv-scroll");
     this.container.appendChild(this.scrollEl);
+  }
+
+  /**
+   * Build the floating toolbar DOM and append to the container.
+   */
+  private buildToolbar(): void {
+    const cfg = this.toolbarConfig;
+    const hasAnyButton = cfg.foldAll || cfg.unfoldAll || cfg.wordWrap || cfg.copy;
+    if (!hasAnyButton) return;
+
+    this.toolbarEl = document.createElement("div");
+    this.toolbarEl.classList.add("edv-toolbar");
+
+    if (cfg.foldAll) {
+      const btn = this.createToolbarButton("⊟", "Fold All", () => this.foldAll());
+      this.toolbarEl.appendChild(btn);
+    }
+
+    if (cfg.unfoldAll) {
+      const btn = this.createToolbarButton("⊞", "Unfold All", () => this.unfoldAll());
+      this.toolbarEl.appendChild(btn);
+    }
+
+    if (cfg.wordWrap) {
+      this.wrapBtn = this.createToolbarButton("↩", "Word Wrap (Alt+Z)", () => {
+        this.toggleWordWrap();
+      });
+      this.toolbarEl.appendChild(this.wrapBtn);
+    }
+
+    if (cfg.copy) {
+      const btn = this.createToolbarButton("⎘", "Copy", () => this.copyContent());
+      this.toolbarEl.appendChild(btn);
+    }
+
+    this.container.appendChild(this.toolbarEl);
+  }
+
+  /**
+   * Create a toolbar button element.
+   */
+  private createToolbarButton(
+    icon: string,
+    title: string,
+    onClick: () => void
+  ): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.classList.add("edv-toolbar-btn");
+    btn.textContent = icon;
+    btn.title = title;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
   }
 
   /**
@@ -33,6 +134,9 @@ export class ElixirDataViewer {
   toggleWordWrap(): void {
     this.wordWrap = !this.wordWrap;
     this.container.classList.toggle("edv-word-wrap", this.wordWrap);
+    if (this.wrapBtn) {
+      this.wrapBtn.classList.toggle("edv-toolbar-btn--active", this.wordWrap);
+    }
   }
 
   /**
@@ -40,6 +144,49 @@ export class ElixirDataViewer {
    */
   isWordWrap(): boolean {
     return this.wordWrap;
+  }
+
+  /**
+   * Fold all foldable regions.
+   */
+  foldAll(): void {
+    this.foldState.foldAll();
+    this.render();
+  }
+
+  /**
+   * Unfold all folded regions.
+   */
+  unfoldAll(): void {
+    this.foldState.unfoldAll();
+    this.render();
+  }
+
+  /**
+   * Get the raw Elixir data content.
+   */
+  getContent(): string {
+    return this.code;
+  }
+
+  /**
+   * Copy the raw Elixir data content to the clipboard.
+   * Returns a promise that resolves when copying is complete.
+   */
+  async copyContent(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.code);
+    } catch {
+      // Fallback for non-HTTPS or older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = this.code;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
   }
 
   /**

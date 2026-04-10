@@ -6,6 +6,7 @@
 
 /* ===== Container ===== */
 .edv-container {
+  position: relative;
   background: #1e1e1e;
   color: #d4d4d4;
   font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New",
@@ -256,4 +257,53 @@
 
 .edv-container::-webkit-scrollbar-corner {
   background: #1e1e1e;
+}
+
+/* ===== Floating Toolbar ===== */
+.edv-toolbar {
+  position: sticky;
+  top: 4px;
+  float: right;
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  background: rgba(37, 37, 38, 0.9);
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 2px;
+  margin-right: 14px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.edv-container:hover .edv-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.edv-toolbar-btn {
+  background: transparent;
+  border: none;
+  color: #cccccc;
+  width: 26px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  padding: 0;
+  line-height: 1;
+}
+
+.edv-toolbar-btn:hover {
+  background: #3c3c3c;
+}
+
+.edv-toolbar-btn.edv-toolbar-btn--active {
+  background: #0e639c;
+  color: #ffffff;
 }
