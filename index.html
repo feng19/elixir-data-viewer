@@ -129,6 +129,9 @@
   ratio: 3.14,
   char_code: ?A,
   nil_value: nil,
+  ref: #Reference<0.2930644178.2773483521.184681>,
+  pid: #PID<0.100.0>,
+  ports: [#Port<0.80>, #Port<0.443>],
   binary: <<104, 101, 108, 108, 111>>,
   big_binary: <<104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 32, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111, 104, 101, 108, 108, 111>>,
   string_with_escapes: "Line1\nLine2\tTabbed\"Quote\"",
@@ -139,6 +142,19 @@
     "c" => [1, 2, 3],
     "d" => %{nested: "map"}
   },
+  struct: %URI{
+    scheme: "https",
+    host: "example.com",
+    port: 443,
+  },
+  struct2: %ThousandIsland.Socket{
+    socket: #Port<0.80>,
+    transport_module: ThousandIsland.Transports.TCP,
+    assigns: %{user_id: 1, role: :admin}
+  },
+  modules: [Enum, Map, URI, ThousandIsland.Socket],
+  map_set: MapSet.new([:apple, :banana, :cherry]),
+  ranges: [1..10, 1..10//2, 10..1//-2],
   keywords: [
     foo: "bar",
     baz: 123

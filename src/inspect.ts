@@ -6,6 +6,7 @@ import type { Tree, SyntaxNode } from "@lezer/common";
 export type InspectType =
   | "String"
   | "Atom"
+  | "Alias"
   | "Integer"
   | "Float"
   | "Boolean"
@@ -18,7 +19,9 @@ export type InspectType =
   | "Map"
   | "List"
   | "Tuple"
-  | "Bitstring";
+  | "Bitstring"
+  | "Range"
+  | "InspectLiteral";
 
 /**
  * Represents a resolved inspect target — the range to highlight and copy.
@@ -52,6 +55,7 @@ const BRACKET_TOKENS = new Set(["{", "}", "[", "]", "<<", ">>"]);
 const LEAF_TYPES = new Set([
   "String",
   "Atom",
+  "Alias",
   "Integer",
   "Float",
   "Boolean",
@@ -123,7 +127,11 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
     };
   }
 
-  // 3. Bubble-up types (QuotedContent → String)
+  // 3. Range expressions (1..10, 1..10//2, 10..1//-2)
+  const rangeTarget = findRangeAncestor(node, code);
+  if (rangeTarget) return rangeTarget;
+
+  // 4. Bubble-up types (QuotedContent → String)
   if (BUBBLE_UP_TYPES.has(name)) {
     const parent = node.parent;
     if (parent && LEAF_TYPES.has(parent.type.name)) {
@@ -137,7 +145,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
     }
   }
 
-  // 4. Leaf value types
+  // 5. Leaf value types
   if (LEAF_TYPES.has(name)) {
     return {
       from: node.from,
@@ -148,7 +156,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
     };
   }
 
-  // 5. Keyword node (pair key like `name:`)
+  // 6. Keyword node (pair key like `name:`)
   if (name === "Keyword") {
     return {
       from: node.from,
@@ -159,7 +167,7 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
     };
   }
 
-  // 6. Pair node — inspect the whole key-value pair
+  // 7. Pair node — inspect the whole key-value pair
   if (name === "Pair") {
     return {
       from: node.from,
@@ -170,5 +178,94 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
     };
   }
 
+  return null;
+}
+
+/**
+ * Check if a BinaryOperator node is a range (has `..` operator child).
+ */
+function isRangeOperator(node: SyntaxNode, code: string): boolean {
+  if (node.type.name !== "BinaryOperator") return false;
+  let child = node.firstChild;
+  while (child) {
+    if (
+      child.type.name === "Operator" &&
+      code.slice(child.from, child.to) === ".."
+    ) {
+      return true;
+    }
+    child = child.nextSibling;
+  }
+  return false;
+}
+
+/**
+ * Check if a BinaryOperator node is a step range (has `//` operator and a range child).
+ * e.g. `1..10//2` parses as BinaryOperator(BinaryOperator(1..10), //, 2)
+ */
+function isStepRange(node: SyntaxNode, code: string): boolean {
+  if (node.type.name !== "BinaryOperator") return false;
+  let hasStepOp = false;
+  let hasRangeChild = false;
+  let child = node.firstChild;
+  while (child) {
+    if (
+      child.type.name === "Operator" &&
+      code.slice(child.from, child.to) === "//"
+    ) {
+      hasStepOp = true;
+    }
+    if (isRangeOperator(child, code)) {
+      hasRangeChild = true;
+    }
+    child = child.nextSibling;
+  }
+  return hasStepOp && hasRangeChild;
+}
+
+/**
+ * Walk up the tree from `node` to find an ancestor that is a range expression.
+ * Returns an InspectTarget for the outermost range (step range if present,
+ * otherwise simple range).
+ */
+function findRangeAncestor(
+  node: SyntaxNode,
+  code: string
+): InspectTarget | null {
+  let current: SyntaxNode | null = node;
+  while (current) {
+    if (current.type.name === "BinaryOperator") {
+      // Check step range first (outermost form: 1..10//2)
+      if (isStepRange(current, code)) {
+        return {
+          from: current.from,
+          to: current.to,
+          copyText: code.slice(current.from, current.to),
+          isStructure: false,
+          type: "Range",
+        };
+      }
+      // Simple range (1..10) — but check if parent is a step range
+      if (isRangeOperator(current, code)) {
+        if (current.parent && isStepRange(current.parent, code)) {
+          return {
+            from: current.parent.from,
+            to: current.parent.to,
+            copyText: code.slice(current.parent.from, current.parent.to),
+            isStructure: false,
+            type: "Range",
+          };
+        }
+        return {
+          from: current.from,
+          to: current.to,
+          copyText: code.slice(current.from, current.to),
+          isStructure: false,
+          type: "Range",
+        };
+      }
+    }
+    current = current.parent;
+  }
   return null;
 }

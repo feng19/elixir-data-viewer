@@ -225,6 +225,11 @@
   font-style: italic;
 }
 
+/* Elixir inspect literals: #Reference<...>, #PID<...>, #Port<...>, etc. */
+.tok-inspect-literal {
+  color: #bb9af7;
+}
+
 /* Underscored identifiers (_foo, _bar) — dimmed like comments */
 .tok-underscore {
   color: #565f89;

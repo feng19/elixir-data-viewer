@@ -4,6 +4,7 @@ import { detectFoldRegions, buildFoldMap } from "./fold";
 import { FoldState } from "./state";
 import { SearchState, type SearchMatch } from "./search";
 import { resolveInspectTarget, type InspectTarget, type InspectType } from "./inspect";
+import { preprocessInspectLiterals, type InspectLiteral } from "./preprocess";
 import type { Tree } from "@lezer/common";
 
 /**
@@ -93,6 +94,9 @@ export class ElixirDataViewer {
   // Inspect state
   private currentInspect: InspectTarget | null = null;
   private inspectCallback: ((event: InspectEvent) => void) | null = null;
+
+  // Pre-processed inspect literals (#Reference<...>, #PID<...>, etc.)
+  private inspectLiterals: InspectLiteral[] = [];
 
   constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
@@ -560,11 +564,20 @@ export class ElixirDataViewer {
     this.lines = code.split("\n");
     this.buildLineOffsets();
 
-    // Parse and analyze — retain tree for inspect
-    const tree = parseElixir(code);
+    // Pre-process: replace inspect literals (#Reference<...>, #PID<...>, etc.)
+    // with same-length atoms so lezer-elixir doesn't treat them as comments
+    const { modifiedCode, inspectLiterals } = preprocessInspectLiterals(code);
+    this.inspectLiterals = inspectLiterals;
+
+    // Parse and analyze — use modified code for correct parsing
+    const tree = parseElixir(modifiedCode);
     this.tree = tree;
-    this.tokens = highlight(code, tree);
-    const regions = detectFoldRegions(code, tree);
+    this.tokens = highlight(modifiedCode, tree);
+
+    // Post-process: fix token CSS classes for inspect literal ranges
+    this.fixInspectLiteralTokenClasses();
+
+    const regions = detectFoldRegions(modifiedCode, tree);
     const regionMap = buildFoldMap(regions);
     this.foldState.setRegions(regions, regionMap);
 
@@ -586,6 +599,37 @@ export class ElixirDataViewer {
    */
   onRender(callback: () => void): void {
     this.onRenderCallback = callback;
+  }
+
+  /**
+   * Post-process highlight tokens: replace CSS classes for spans that fall
+   * within pre-processed inspect literal ranges (e.g. #Reference<...>)
+   * so they render with the inspect-literal style instead of atom style.
+   */
+  private fixInspectLiteralTokenClasses(): void {
+    if (this.inspectLiterals.length === 0) return;
+
+    for (const lit of this.inspectLiterals) {
+      for (const tok of this.tokens) {
+        // Token is fully within the inspect literal range
+        if (tok.from >= lit.from && tok.to <= lit.to) {
+          tok.classes = "tok-inspect-literal";
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if an offset falls within a pre-processed inspect literal and
+   * return the literal if so, or null.
+   */
+  private findInspectLiteral(from: number, to: number): InspectLiteral | null {
+    for (const lit of this.inspectLiterals) {
+      if (from >= lit.from && to <= lit.to) {
+        return lit;
+      }
+    }
+    return null;
   }
 
   /**
@@ -976,6 +1020,12 @@ export class ElixirDataViewer {
     if (!inspectTarget) {
       this.clearInspectHighlight();
       return;
+    }
+
+    // Override type for pre-processed inspect literals (#Reference<...>, etc.)
+    const lit = this.findInspectLiteral(inspectTarget.from, inspectTarget.to);
+    if (lit) {
+      inspectTarget.type = "InspectLiteral";
     }
 
     // Check if target changed (avoid redundant DOM work)

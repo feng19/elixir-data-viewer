@@ -26,3 +26,5 @@ export { SearchState } from "./search";
 export type { SearchMatch } from "./search";
 export { resolveInspectTarget } from "./inspect";
 export type { InspectTarget, InspectType } from "./inspect";
+export { preprocessInspectLiterals } from "./preprocess";
+export type { InspectLiteral, PreprocessResult } from "./preprocess";
