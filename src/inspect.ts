@@ -156,12 +156,15 @@ function classifyNode(node: SyntaxNode, code: string): InspectTarget | null {
     };
   }
 
-  // 6. Keyword node (pair key like `name:`)
+  // 6. Keyword node (pair key like `name:`) → copy as atom `:name`
   if (name === "Keyword") {
+    const rawText = code.slice(node.from, node.to);
+    // Convert keyword syntax `name:` to atom syntax `:name`
+    const atomText = ":" + rawText.replace(/:\s*$/, "");
     return {
       from: node.from,
       to: node.to,
-      copyText: code.slice(node.from, node.to),
+      copyText: atomText,
       isStructure: false,
       type: "Keyword",
     };
