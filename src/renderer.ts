@@ -56,6 +56,8 @@ export interface ElixirDataViewerOptions {
    * 0 or undefined = no auto-folding (all expanded).
    */
   defaultFoldLevel?: number;
+  /** Whether word wrap is enabled by default. Default: false */
+  defaultWordWrap?: boolean;
 }
 
 /** Resolved toolbar config with defaults applied */
@@ -112,6 +114,7 @@ export class ElixirDataViewer {
 
     // Resolve options
     this.defaultFoldLevel = options?.defaultFoldLevel ?? 0;
+    this.wordWrap = options?.defaultWordWrap ?? false;
 
     // Resolve toolbar options with defaults
     const tb = options?.toolbar ?? {};
@@ -125,6 +128,14 @@ export class ElixirDataViewer {
 
     // Build toolbar (positioned absolutely, does not scroll)
     this.buildToolbar();
+
+    // Apply default word wrap state
+    if (this.wordWrap) {
+      this.container.classList.add("edv-word-wrap");
+      if (this.wrapBtn) {
+        this.wrapBtn.classList.add("edv-toolbar-btn--active");
+      }
+    }
 
     // Build search bar (sits above the scrollable area)
     this.buildSearchBar();

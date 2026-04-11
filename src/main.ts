@@ -42,6 +42,7 @@ function initViewers(): ElixirDataViewer[] {
     const options: ElixirDataViewerOptions = {
       toolbar: toolbarOpts,
       defaultFoldLevel: defaultFoldLevel && !isNaN(defaultFoldLevel) ? defaultFoldLevel : undefined,
+      // defaultWordWrap: true,
     };
 
     const viewer = new ElixirDataViewer(el, options);
@@ -55,10 +56,10 @@ function initViewers(): ElixirDataViewer[] {
 // Initialize all viewers on page load
 const viewers = initViewers();
 
-if (viewers.length > 0) { viewers[0].toggleWordWrap(); }
 
 // Demo: onInspect callback on the first viewer
 if (viewers.length > 0) {
+  viewers[0].toggleWordWrap();
 
   viewers[0].onInspect((event) => {
     console.log(`[onInspect] type=${event.type}, copyText=${event.copyText}`);
