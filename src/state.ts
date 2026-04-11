@@ -95,6 +95,21 @@ export class FoldState {
   }
 
   /**
+   * Fold all regions whose nesting depth exceeds maxLevel.
+   * Level 1 = outermost structures. foldToLevel(3) shows levels 1–3 expanded,
+   * level 4+ folded. foldToLevel(0) or negative values unfold all.
+   */
+  foldToLevel(maxLevel: number): void {
+    this.foldedLines.clear();
+    if (maxLevel <= 0) return; // 0 or negative = unfold all
+    for (const region of this.regions) {
+      if (region.depth > maxLevel) {
+        this.foldedLines.add(region.startLine);
+      }
+    }
+  }
+
+  /**
    * Reveal a specific line by unfolding any region that hides it.
    * This ensures the line becomes visible in the rendered output.
    */

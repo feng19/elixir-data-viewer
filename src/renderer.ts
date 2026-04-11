@@ -49,6 +49,13 @@ export interface InspectEvent {
 export interface ElixirDataViewerOptions {
   /** Toolbar button visibility. All default to true. */
   toolbar?: ToolbarOptions;
+  /**
+   * Default fold level. Regions deeper than this level are automatically
+   * folded when setContent() is called.
+   * E.g. 3 = show first 3 levels expanded, fold level 4+.
+   * 0 or undefined = no auto-folding (all expanded).
+   */
+  defaultFoldLevel?: number;
 }
 
 /** Resolved toolbar config with defaults applied */
@@ -79,6 +86,7 @@ export class ElixirDataViewer {
   private tokens: HighlightToken[] = [];
   private tree: Tree | null = null;
   private foldState: FoldState = new FoldState();
+  private defaultFoldLevel: number = 0;
   private searchState: SearchState = new SearchState();
   private onRenderCallback: (() => void) | null = null;
   private wordWrap: boolean = false;
@@ -101,6 +109,9 @@ export class ElixirDataViewer {
   constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
     this.container.classList.add("edv-container");
+
+    // Resolve options
+    this.defaultFoldLevel = options?.defaultFoldLevel ?? 0;
 
     // Resolve toolbar options with defaults
     const tb = options?.toolbar ?? {};
@@ -344,6 +355,16 @@ export class ElixirDataViewer {
   }
 
   /**
+   * Fold all regions deeper than the given level.
+   * Level 1 = top-level structures. foldToLevel(3) expands levels 1–3, folds 4+.
+   * foldToLevel(0) unfolds all.
+   */
+  foldToLevel(level: number): void {
+    this.foldState.foldToLevel(level);
+    this.render();
+  }
+
+  /**
    * Get the raw Elixir data content.
    */
   getContent(): string {
@@ -580,6 +601,11 @@ export class ElixirDataViewer {
     const regions = detectFoldRegions(modifiedCode, tree);
     const regionMap = buildFoldMap(regions);
     this.foldState.setRegions(regions, regionMap);
+
+    // Apply default fold level if configured
+    if (this.defaultFoldLevel > 0) {
+      this.foldState.foldToLevel(this.defaultFoldLevel);
+    }
 
     // Re-run search if active
     if (this.searchState.isActive()) {

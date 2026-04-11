@@ -154,6 +154,10 @@ interface ElixirDataViewerOptions {
     wordWrap?: boolean;   // Show "Word Wrap" toggle (default: true)
     copy?: boolean;       // Show "Copy" button (default: true)
   };
+  /** Default fold level — regions deeper than this are auto-folded on setContent().
+   *  E.g. 3 = show first 3 levels expanded, fold level 4+.
+   *  0 or undefined = no auto-folding (all expanded). */
+  defaultFoldLevel?: number;
 }
 ```
 
@@ -170,20 +174,28 @@ new ElixirDataViewer(container, { toolbar: { copy: false } });
 new ElixirDataViewer(container, {
   toolbar: { foldAll: false, unfoldAll: false, wordWrap: false, copy: false }
 });
+
+// Auto-fold: show only top 3 levels, fold level 4+
+new ElixirDataViewer(container, { defaultFoldLevel: 3 });
 ```
 
 #### HTML Data Attributes
 
-When using auto-discovery, toolbar buttons can be configured via `data-toolbar-*` attributes:
+When using auto-discovery, toolbar buttons and fold level can be configured via `data-*` attributes:
 
 ```html
 <!-- Hide copy and fold-all buttons -->
 <div class="edv-viewer" data-toolbar-copy="false" data-toolbar-fold-all="false">
   <script type="text/elixir-data">...</script>
 </div>
+
+<!-- Auto-fold: show only top 3 levels -->
+<div class="edv-viewer" data-fold-level="3">
+  <script type="text/elixir-data">...</script>
+</div>
 ```
 
-Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-toolbar-word-wrap`, `data-toolbar-copy`
+Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-toolbar-word-wrap`, `data-toolbar-copy`, `data-fold-level`
 
 #### Methods
 
@@ -193,6 +205,7 @@ Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-
 | `getContent(): string` | Get the raw Elixir data string |
 | `foldAll(): void` | Collapse all foldable regions |
 | `unfoldAll(): void` | Expand all folded regions |
+| `foldToLevel(level: number): void` | Fold regions deeper than `level` (1 = top-level). `foldToLevel(3)` shows levels 1–3, folds 4+. `foldToLevel(0)` unfolds all. |
 | `toggleWordWrap(): void` | Toggle word wrap mode |
 | `isWordWrap(): boolean` | Get current word wrap state |
 | `copyContent(): Promise<void>` | Copy raw content to clipboard |

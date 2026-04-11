@@ -18,6 +18,8 @@ export interface FoldRegion {
   closeText: string;
   /** Number of direct child items in the structure (e.g. list elements, map pairs). -1 if not applicable. */
   itemCount: number;
+  /** Nesting depth of this foldable region (1 = top-level, 2 = nested inside one, etc.) */
+  depth: number;
 }
 
 /** Node types that can be folded, with their bracket pairs */
@@ -146,6 +148,7 @@ function walkTree(
         openText,
         closeText: config.close,
         itemCount: countItems(node),
+        depth: 0, // computed after collection
       });
     }
   }
@@ -172,6 +175,18 @@ export function detectFoldRegions(
 
   // Sort by startLine, then by startOffset (outer regions first for nesting)
   regions.sort((a, b) => a.startLine - b.startLine || a.startOffset - b.startOffset);
+
+  // Compute nesting depth using a stack-based algorithm.
+  // Since regions are sorted by startOffset, we can track nesting with a stack.
+  const stack: FoldRegion[] = [];
+  for (const region of regions) {
+    // Pop regions whose range has ended before this region starts
+    while (stack.length > 0 && stack[stack.length - 1].endOffset <= region.startOffset) {
+      stack.pop();
+    }
+    region.depth = stack.length + 1; // 1-indexed: top-level = 1
+    stack.push(region);
+  }
 
   return regions;
 }

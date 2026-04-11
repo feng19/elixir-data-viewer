@@ -35,8 +35,13 @@ function initViewers(): ElixirDataViewer[] {
       }
     }
 
+    // Read data-fold-level attribute
+    const foldLevelAttr = el.getAttribute("data-fold-level");
+    const defaultFoldLevel = foldLevelAttr ? parseInt(foldLevelAttr, 10) : undefined;
+
     const options: ElixirDataViewerOptions = {
       toolbar: toolbarOpts,
+      defaultFoldLevel: defaultFoldLevel && !isNaN(defaultFoldLevel) ? defaultFoldLevel : undefined,
     };
 
     const viewer = new ElixirDataViewer(el, options);
