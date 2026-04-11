@@ -976,8 +976,17 @@ export class ElixirDataViewer {
     // Add the fold ellipsis — carries the full structure range for inspect
     const ellipsis = document.createElement("span");
     ellipsis.classList.add("edv-fold-ellipsis");
-    ellipsis.textContent = "…";
-    ellipsis.title = `${region.endLine - region.startLine} lines folded`;
+    const foldedLines = region.endLine - region.startLine;
+    if (region.itemCount > 0) {
+      ellipsis.textContent = `${region.itemCount} items`;
+      ellipsis.title = `${region.itemCount} items, ${foldedLines} lines folded`;
+    } else {
+      // For multi-line strings ("""/'''), the content lines exclude the delimiter lines
+      const isMultilineString = region.openText === '"""' || region.openText === "'''";
+      const displayLines = isMultilineString ? foldedLines - 1 : foldedLines;
+      ellipsis.textContent = `${displayLines} lines`;
+      ellipsis.title = `${displayLines} lines folded`;
+    }
     ellipsis.dataset.from = String(region.startOffset);
     ellipsis.dataset.to = String(region.endOffset);
     ellipsis.addEventListener("click", (e) => {

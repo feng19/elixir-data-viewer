@@ -126,14 +126,15 @@
   display: inline-block;
   background: #292e42;
   color: #7aa2f7;
-  padding: 0 4px;
+  padding: 0 5px;
   margin: 0 2px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   border: 1px solid #3b4261;
   line-height: 16px;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .edv-fold-ellipsis:hover {

@@ -16,6 +16,8 @@ export interface FoldRegion {
   openText: string;
   /** The closing bracket text, e.g. "]", "}", ">>" */
   closeText: string;
+  /** Number of direct child items in the structure (e.g. list elements, map pairs). -1 if not applicable. */
+  itemCount: number;
 }
 
 /** Node types that can be folded, with their bracket pairs */
@@ -28,6 +30,51 @@ const FOLDABLE_NODES: Record<string, { open: string; close: string }> = {
   String: { open: '"""', close: '"""' },
   Charlist: { open: "'''", close: "'''" },
 };
+
+/** Node types whose direct children should be counted as items */
+const COUNTABLE_NODES = new Set(["List", "Tuple", "Map", "MapContent", "Keywords", "Bitstring"]);
+
+/** Node types that are punctuation/delimiters to skip when counting */
+const SKIP_NODES = new Set([",", "[", "]", "{", "}", "<<", ">>", "%", "|", "=>", ":"]);
+
+/**
+ * Count the number of direct child items in a foldable node.
+ * For List/Tuple/Bitstring: counts non-punctuation children.
+ * For Map: digs into MapContent → Keywords to count key-value pairs.
+ * Returns -1 for non-countable node types.
+ */
+function countItems(node: SyntaxNode): number {
+  const name = node.type.name;
+  if (!COUNTABLE_NODES.has(name)) return -1;
+
+  let count = 0;
+  let child = node.firstChild;
+  while (child) {
+    const childName = child.type.name;
+
+    // Skip punctuation/delimiters and operators
+    if (SKIP_NODES.has(childName)) {
+      child = child.nextSibling;
+      continue;
+    }
+
+    // Dig into wrapper/container nodes (MapContent, Keywords, Struct)
+    if (childName === "MapContent" || childName === "Keywords") {
+      return countItems(child);
+    }
+
+    // Skip struct name node (e.g. %URI{...} → Struct node)
+    if (childName === "Struct") {
+      child = child.nextSibling;
+      continue;
+    }
+
+    count++;
+    child = child.nextSibling;
+  }
+
+  return count;
+}
 
 /**
  * Build a line offset table: lineOffsets[i] = character offset of line i's start.
@@ -98,6 +145,7 @@ function walkTree(
         endOffset: node.to,
         openText,
         closeText: config.close,
+        itemCount: countItems(node),
       });
     }
   }
