@@ -9,5 +9,7 @@
  *   import ElixirDataViewer from "../vendor/elixir-data-viewer"
  */
 
+import "./styles/theme.css";
+
 export * from "./index";
 export { ElixirDataViewer as default } from "./renderer";
