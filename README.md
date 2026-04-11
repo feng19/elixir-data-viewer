@@ -72,7 +72,7 @@ Add `.edv-viewer` elements with `<script type="text/elixir-data">` blocks:
 </script>
 ```
 
-### Standalone / Phoenix (Single IIFE File)
+### Standalone / Phoenix (Single ESM File)
 
 Build a single JS file with all dependencies and CSS bundled in:
 
@@ -80,23 +80,23 @@ Build a single JS file with all dependencies and CSS bundled in:
 npm run build:standalone
 ```
 
-This produces `dist/elixir-data-viewer.iife.js` (~55 kB gzipped) — a single file that:
+This produces `dist/elixir-data-viewer.js` (~55 kB gzipped) — a single ESM file that:
 - Bundles all dependencies (`lezer-elixir`, `@lezer/common`, `@lezer/highlight`)
 - Injects CSS automatically via `<style>` tag (no separate CSS file needed)
-- Exposes all exports on `window.ElixirDataViewer`
+- Exports `ElixirDataViewer` as the default export, plus all named exports
 
 #### Phoenix Integration
 
 1. Copy the built file into your Phoenix project:
 
 ```bash
-cp dist/elixir-data-viewer.iife.js your_phoenix_app/assets/vendor/
+cp dist/elixir-data-viewer.js your_phoenix_app/assets/vendor/
 ```
 
 2. Import it in your `assets/js/app.js`:
 
 ```javascript
-import "../vendor/elixir-data-viewer.iife.js";
+import ElixirDataViewer from "../vendor/elixir-data-viewer"
 ```
 
 3. Create a LiveView Hook:
@@ -106,7 +106,7 @@ let Hooks = {};
 
 Hooks.ElixirDataViewer = {
   mounted() {
-    const viewer = new window.ElixirDataViewer.ElixirDataViewer(this.el);
+    const viewer = new ElixirDataViewer(this.el);
     viewer.setContent(this.el.dataset.content || this.el.innerText);
     this.viewer = viewer;
 
@@ -132,20 +132,6 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```heex
 <div id="data-viewer" phx-hook="ElixirDataViewer" data-content={inspect(@data, pretty: true)}>
 </div>
-```
-
-#### Without a Build System
-
-You can also load the IIFE file directly via `<script>` tag:
-
-```html
-<script src="/vendor/elixir-data-viewer.iife.js"></script>
-<script>
-  const viewer = new ElixirDataViewer.ElixirDataViewer(
-    document.getElementById("viewer")
-  );
-  viewer.setContent('%{name: "Alice", age: 30}');
-</script>
 ```
 
 ## API Reference
@@ -323,18 +309,19 @@ The dev server starts at `http://localhost:5173` with the demo page showing mult
 ├── src/
 │   ├── main.ts             # Demo entry — auto-discovers .edv-viewer elements
 │   ├── index.ts            # Library entry — public exports
+│   ├── standalone.ts       # Standalone entry — default export for Phoenix/vendor
 │   ├── renderer.ts         # ElixirDataViewer class with toolbar
 │   ├── parser.ts           # lezer-elixir parser wrapper
 │   ├── highlighter.ts      # Syntax tree → highlighted tokens
 │   ├── fold.ts             # Fold region detection
 │   ├── state.ts            # Fold state management
 │   └── styles/
-│       └── theme.css       # VS Code Dark+ theme
+│       └── theme.css       # Tokyo Night theme
 ├── package.json
 ├── tsconfig.json
 ├── tsconfig.build.json
 ├── vite.config.ts              # Library build config (ES + CJS)
-└── vite.config.standalone.ts   # Standalone IIFE build config (single file)
+└── vite.config.standalone.ts   # Standalone ESM build config (single file)
 ```
 
 ## License

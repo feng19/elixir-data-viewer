@@ -1,12 +1,12 @@
 /**
- * Standalone build configuration for producing a single IIFE JS file
+ * Standalone build configuration for producing a single ESM JS file
  * with all dependencies bundled and CSS injected into the JS.
  *
  * Usage:
  *   npm run build:standalone
  *
  * Output:
- *   dist/elixir-data-viewer.iife.js  (single file, ready for Phoenix vendor/)
+ *   dist/elixir-data-viewer.js  (single ESM file, ready for Phoenix vendor/)
  */
 import { defineConfig } from "vite";
 import { resolve, dirname } from "node:path";
@@ -24,18 +24,15 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: false, // preserve existing lib build output
     lib: {
-      entry: resolve(__dirname, "src/index.ts"),
-      name: "ElixirDataViewer",
-      formats: ["iife"],
-      fileName: () => "elixir-data-viewer.iife.js",
+      entry: resolve(__dirname, "src/standalone.ts"),
+      formats: ["es"],
+      fileName: () => "elixir-data-viewer.js",
     },
     rollupOptions: {
       // Bundle ALL dependencies into the output (no externals)
       external: [],
       output: {
         globals: {},
-        // Extend the IIFE global rather than replacing window.ElixirDataViewer
-        extend: true,
       },
     },
     // Inline all CSS into JS via the plugin above
