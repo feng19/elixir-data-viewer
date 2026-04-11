@@ -158,6 +158,8 @@ interface ElixirDataViewerOptions {
    *  E.g. 3 = show first 3 levels expanded, fold level 4+.
    *  0 or undefined = no auto-folding (all expanded). */
   defaultFoldLevel?: number;
+  /** Whether word wrap is enabled by default. Default: false */
+  defaultWordWrap?: boolean;
 }
 ```
 
@@ -177,6 +179,9 @@ new ElixirDataViewer(container, {
 
 // Auto-fold: show only top 3 levels, fold level 4+
 new ElixirDataViewer(container, { defaultFoldLevel: 3 });
+
+// Enable word wrap by default
+new ElixirDataViewer(container, { defaultWordWrap: true });
 ```
 
 #### HTML Data Attributes
