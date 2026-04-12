@@ -37,9 +37,14 @@
     "read-only"
   ],
   "license": "MIT",
+  "author": "Kevin Pan <kevin@feng19.com>",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/feng19/elixir-data-viewer.git"
+  },
+  "homepage": "https://github.com/feng19/elixir-data-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/feng19/elixir-data-viewer/issues"
   },
   "dependencies": {
     "@lezer/common": "^1.0.0",
