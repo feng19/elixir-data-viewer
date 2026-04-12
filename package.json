@@ -1,6 +1,6 @@
 {
   "name": "elixir-data-viewer",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A read-only web viewer for Elixir data structures with syntax highlighting, code folding, and line numbers. Powered by lezer-elixir.",
   "type": "module",
   "main": "dist/index.cjs",
