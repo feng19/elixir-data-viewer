@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elixir Data Viewer — Syntax Highlighting & Code Folding for Elixir Data</title>
+  <meta name="description" content="A read-only web viewer for Elixir data structures with syntax highlighting, code folding, line numbers, and a Tokyo Night theme. Powered by lezer-elixir." />
+  <meta property="og:title" content="Elixir Data Viewer" />
+  <meta property="og:description" content="A read-only web viewer for Elixir data structures with syntax highlighting, code folding, and line numbers." />
+  <meta property="og:url" content="https://elixir-data-viewer.feng19.com" />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="./main.ts"></script>
+</head>
+<body>
+  <!-- ===== Navbar ===== -->
+  <nav class="navbar" id="navbar">
+    <div class="container navbar-inner">
+      <a href="#" class="navbar-logo">
+        Elixir Data Viewer
+      </a>
+      <button class="navbar-toggle" id="navbar-toggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-links" id="navbar-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="https://github.com/feng19/elixir-data-viewer" target="_blank" rel="noopener">GitHub ↗</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero" id="hero">
+    <div class="hero-bg">
+      <canvas id="hero-canvas"></canvas>
+    </div>
+    <div class="container hero-inner">
+      <h1 class="hero-title">
+        <span class="hero-title-line">
+          <span class="hero-word hero-word--elixir" data-text="Elixir">Elixir</span>
+          <span class="hero-word hero-word--data" data-text="Data">Data</span>
+          <span class="hero-word hero-word--viewer" data-text="Viewer">Viewer</span>
+        </span>
+      </h1>
+      <p class="hero-subtitle">
+        A read-only web viewer for Elixir data structures<br />
+        with syntax highlighting, code folding, and line numbers.<br />
+        Built with vanilla TypeScript — powered by
+        <a href="https://github.com/livebook-dev/lezer-elixir" target="_blank" rel="noopener">lezer-elixir</a>.
+      </p>
+      <div class="hero-cta">
+        <a href="#demo" class="btn btn-primary">Try Demo ↓</a>
+        <a href="https://github.com/feng19/elixir-data-viewer" target="_blank" rel="noopener" class="btn btn-outline">GitHub →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Features ===== -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">Features</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3>Syntax Highlighting</h3>
+          <p>Accurate Elixir syntax coloring via lezer-elixir parser with a beautiful Tokyo Night theme.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📁</div>
+          <h3>Code Folding</h3>
+          <p>Collapse and expand maps, lists, tuples, keyword lists, bitstrings, and multi-line strings.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <h3>Search</h3>
+          <p>Full-text search with match highlighting, case sensitivity toggle, and keyboard navigation.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔑</div>
+          <h3>Key Filtering</h3>
+          <p>Hide specific key-value pairs by name. Perfect for filtering out sensitive or noisy fields.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Click-to-Copy</h3>
+          <p>Click any value — atoms, strings, maps, lists — to copy it to your clipboard instantly.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔥</div>
+          <h3>Phoenix Ready</h3>
+          <p>Single ESM file with all deps bundled. Drop into Phoenix as a vendor file with LiveView hook support.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Demo ===== -->
+  <section class="demo" id="demo">
+    <div class="container">
+      <h2 class="section-title">Interactive Demo</h2>
+      <p class="section-desc">Try it out — fold, search, filter keys, and click values to copy.</p>
+      <div class="demo-actions">
+        <button class="btn btn-secondary" id="btn-custom-data">✏️ Try Your Own Data</button>
+      </div>
+      <div class="demo-card">
+        <div class="code-header demo-header">
+          <span class="code-label">Live Preview</span>
+          <span class="demo-hint">Hover for toolbar · Click values to copy</span>
+        </div>
+        <div class="demo-viewer" id="demo-viewer">
+          <script type="text/elixir-data">
+%{
+  users: [
+    %{
+      name: "Alice",
+      age: 30,
+      email: "alice@example.com",
+      roles: [:admin, :user],
+      metadata: %{
+        login_count: 42,
+        last_login: ~N[2024-01-15 10:30:00],
+        preferences: %{theme: "dark", language: "en"}
+      }
+    },
+    %{
+      name: "Bob",
+      age: 25,
+      email: "bob@example.com",
+      roles: [:user],
+      metadata: %{
+        login_count: 7,
+        last_login: ~N[2024-01-14 08:15:00],
+        preferences: %{theme: "light", language: "ja"}
+      }
+    }
+  ],
+  total: 2,
+  page: 1,
+  active: true,
+  config: [timeout: 5000, retries: 3, base_url: "https://api.example.com"],
+  status: :ok,
+  struct: %URI{scheme: "https", host: "example.com", port: 443},
+  pid: #PID<0.100.0>,
+  ref: #Reference<0.2930644178.2773483521.184681>,
+  binary: <<104, 101, 108, 108, 111>>,
+  modules: [Enum, Map, URI],
+  ranges: [1..10, 1..10//2]
+}
+          </script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Install & Usage ===== -->
+  <section class="install" id="install">
+    <div class="container">
+      <h2 class="section-title">Install & Usage</h2>
+
+      <!-- Tab Navigation -->
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="phoenix">Phoenix / Standalone</button>
+        <button class="tab" data-tab="npm">NPM Package</button>
+        <button class="tab" data-tab="html">HTML Inline</button>
+      </div>
+
+      <!-- Tab: Phoenix / Standalone -->
+      <div class="tab-panel tab-panel--active" id="tab-phoenix">
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-label">1. Download from GitHub Releases (~55 kB gzipped)</span>
+            <button class="copy-btn" data-copy="phoenix-download" aria-label="Copy">⎘ Copy</button>
+          </div>
+          <pre><code id="phoenix-download"><span class="hl-comment"># Download the latest standalone build from GitHub Releases:</span>
+<span class="hl-comment"># https://github.com/feng19/elixir-data-viewer/releases</span>
+<span class="hl-comment">#</span>
+<span class="hl-comment"># Grab `elixir-data-viewer.js` — single ESM file with all deps + CSS bundled</span>
+
+<span class="hl-comment"># Copy to your Phoenix project:</span>
+cp elixir-data-viewer.js your_phoenix_app/assets/vendor/</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-label">2. Phoenix LiveView Hook</span>
+            <button class="copy-btn" data-copy="phoenix-hook" aria-label="Copy">⎘ Copy</button>
+          </div>
+          <pre><code id="phoenix-hook"><span class="hl-keyword">import</span> ElixirDataViewer <span class="hl-keyword">from</span> <span class="hl-string">"../vendor/elixir-data-viewer"</span>;
+
+<span class="hl-keyword">let</span> Hooks = {};
+Hooks.ElixirDataViewer = {
+  <span class="hl-fn">mounted</span>() {
+    <span class="hl-keyword">const</span> viewer = <span class="hl-keyword">new</span> <span class="hl-fn">ElixirDataViewer</span>(<span class="hl-keyword">this</span>.el);
+    viewer.<span class="hl-fn">setContent</span>(<span class="hl-keyword">this</span>.el.dataset.content);
+    <span class="hl-keyword">this</span>.viewer = viewer;
+  },
+  <span class="hl-fn">updated</span>() {
+    <span class="hl-keyword">this</span>.viewer.<span class="hl-fn">setContent</span>(<span class="hl-keyword">this</span>.el.dataset.content);
+  },
+};</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-label">3. HEEx Template</span>
+            <button class="copy-btn" data-copy="phoenix-heex" aria-label="Copy">⎘ Copy</button>
+          </div>
+          <pre><code id="phoenix-heex"><span class="hl-tag">&lt;div</span> <span class="hl-attr">id</span>=<span class="hl-string">"data-viewer"</span>
+     <span class="hl-attr">phx-hook</span>=<span class="hl-string">"ElixirDataViewer"</span>
+     <span class="hl-attr">data-content</span>={<span class="hl-fn">inspect</span>(<span class="hl-keyword">@data</span>, <span class="hl-attr">pretty:</span> <span class="hl-keyword">true</span>)}<span class="hl-tag">&gt;</span>
+<span class="hl-tag">&lt;/div&gt;</span></code></pre>
+        </div>
+      </div>
+
+      <!-- Tab: npm -->
+      <div class="tab-panel" id="tab-npm">
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-label">Install</span>
+            <button class="copy-btn" data-copy="npm-install" aria-label="Copy">⎘ Copy</button>
+          </div>
+          <pre><code id="npm-install">npm install elixir-data-viewer</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-label">Usage (TypeScript / JavaScript)</span>
+            <button class="copy-btn" data-copy="npm-usage" aria-label="Copy">⎘ Copy</button>
+          </div>
+          <pre><code id="npm-usage"><span class="hl-keyword">import</span> { ElixirDataViewer } <span class="hl-keyword">from</span> <span class="hl-string">"elixir-data-viewer"</span>;
+<span class="hl-keyword">import</span> <span class="hl-string">"elixir-data-viewer/style.css"</span>;
+
+<span class="hl-keyword">const</span> container = document.<span class="hl-fn">getElementById</span>(<span class="hl-string">"viewer"</span>)!;
+<span class="hl-keyword">const</span> viewer = <span class="hl-keyword">new</span> <span class="hl-fn">ElixirDataViewer</span>(container);
+viewer.<span class="hl-fn">setContent</span>(<span class="hl-string">`%{name: "Alice", roles: [:admin, :user]}`</span>);</code></pre>
+        </div>
+      </div>
+
+      <!-- Tab: HTML Inline -->
+      <div class="tab-panel" id="tab-html">
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-label">HTML with Inline Data</span>
+            <button class="copy-btn" data-copy="html-usage" aria-label="Copy">⎘ Copy</button>
+          </div>
+          <pre><code id="html-usage"><span class="hl-tag">&lt;div</span> <span class="hl-attr">class</span>=<span class="hl-string">"edv-viewer"</span><span class="hl-tag">&gt;</span>
+  <span class="hl-tag">&lt;script</span> <span class="hl-attr">type</span>=<span class="hl-string">"text/elixir-data"</span><span class="hl-tag">&gt;</span>
+<span class="hl-comment">%{name: "Alice", age: 30, roles: [:admin, :user]}</span>
+  <span class="hl-tag">&lt;/script&gt;</span>
+<span class="hl-tag">&lt;/div&gt;</span>
+
+<span class="hl-tag">&lt;script</span> <span class="hl-attr">type</span>=<span class="hl-string">"module"</span><span class="hl-tag">&gt;</span>
+  <span class="hl-keyword">import</span> { ElixirDataViewer } <span class="hl-keyword">from</span> <span class="hl-string">"elixir-data-viewer"</span>;
+  <span class="hl-keyword">import</span> <span class="hl-string">"elixir-data-viewer/style.css"</span>;
+
+  document.<span class="hl-fn">querySelectorAll</span>(<span class="hl-string">".edv-viewer"</span>).<span class="hl-fn">forEach</span>(<span class="hl-keyword">(el) =&gt;</span> {
+    <span class="hl-keyword">const</span> script = el.<span class="hl-fn">querySelector</span>(<span class="hl-string">'script[type="text/elixir-data"]'</span>);
+    <span class="hl-keyword">if</span> (!script) <span class="hl-keyword">return</span>;
+    <span class="hl-keyword">const</span> data = script.textContent?.trim() ?? <span class="hl-string">""</span>;
+    script.<span class="hl-fn">remove</span>();
+    <span class="hl-keyword">const</span> viewer = <span class="hl-keyword">new</span> <span class="hl-fn">ElixirDataViewer</span>(el);
+    viewer.<span class="hl-fn">setContent</span>(data);
+  });
+<span class="hl-tag">&lt;/script&gt;</span></code></pre>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer" id="footer">
+    <div class="container footer-inner">
+      <div class="footer-links">
+        <a href="https://github.com/feng19/elixir-data-viewer" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a href="https://www.npmjs.com/package/elixir-data-viewer" target="_blank" rel="noopener">NPM</a>
+        <a href="https://github.com/feng19/elixir-data-viewer/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      </div>
+      <p class="footer-copy">
+        Made by <a href="https://github.com/feng19" target="_blank" rel="noopener">Kevin Pan</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- ===== Custom Data Modal ===== -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Try Your Own Elixir Data</h3>
+        <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <textarea
+          id="modal-textarea"
+          class="modal-textarea"
+          spellcheck="false"
+          placeholder='Paste your Elixir data here, e.g.&#10;%{name: "Alice", age: 30, roles: [:admin, :user]}'
+        ></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-apply">Apply</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

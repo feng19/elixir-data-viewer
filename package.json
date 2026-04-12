@@ -23,8 +23,10 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:landing": "vite --config vite.config.landing.ts",
     "build": "vite build && tsc -p tsconfig.build.json",
     "build:standalone": "vite build --config vite.config.standalone.ts",
+    "build:landing": "vite build --config vite.config.landing.ts",
     "preview": "vite preview",
     "prepublishOnly": "npm run build"
   },
