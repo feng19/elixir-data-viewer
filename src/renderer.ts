@@ -540,6 +540,56 @@ export class ElixirDataViewer {
   }
 
   /**
+   * Programmatically search for a keyword.
+   * Highlights all matches and scrolls to the first one, but does NOT
+   * open/show the search bar UI. The search input is always kept in sync.
+   *
+   * @param query - The keyword to search for. Pass an empty string to clear.
+   * @param options - Optional settings. `caseSensitive` defaults to the
+   *                  current case-sensitivity state.
+   */
+  search(query: string, options?: { caseSensitive?: boolean }): void {
+    const caseSensitive =
+      options?.caseSensitive ?? this.searchState.isCaseSensitive();
+
+    // Execute search
+    this.searchState.search(this.lines, query, caseSensitive);
+
+    // Always sync UI input & case button
+    if (this.searchInputEl) {
+      this.searchInputEl.value = query;
+    }
+    this.searchCaseBtn?.classList.toggle(
+      "edv-search-case-btn--active",
+      caseSensitive
+    );
+    this.updateSearchInfo();
+
+    // If there's a current match, reveal it (unfold if needed)
+    const match = this.searchState.getCurrentMatch();
+    if (match) {
+      this.revealAndScrollToMatch(match);
+    }
+
+    this.render();
+  }
+
+  /**
+   * Clear the current search state and remove all highlights.
+   * The search input is cleared but the search bar visibility is unchanged.
+   */
+  clearSearch(): void {
+    this.searchState.clear();
+
+    // Always sync UI input
+    if (this.searchInputEl) {
+      this.searchInputEl.value = "";
+    }
+    this.updateSearchInfo();
+    this.render();
+  }
+
+  /**
    * Handle input in the search field.
    */
   private onSearchInput(): void {

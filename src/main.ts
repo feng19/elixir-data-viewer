@@ -67,9 +67,10 @@ const viewers = initViewers();
 
 // Demo: onInspect callback on the first viewer
 if (viewers.length > 0) {
-  viewers[0].toggleWordWrap();
+  let viewer = viewers[0];
+  viewer.toggleWordWrap();
 
-  viewers[0].onInspect((event) => {
+  viewer.onInspect((event) => {
     console.log(`[onInspect] type=${event.type}, copyText=${event.copyText}`);
 
     // Demo: for String clicks, suppress copy and show an alert instead
@@ -81,7 +82,8 @@ if (viewers.length > 0) {
   });
 
   // Demo: log available keys for filtering
-  console.log("[filter] Available keys:", viewers[0].getAvailableKeys());
+  console.log("[filter] Available keys:", viewer.getAvailableKeys());
+  viewer.search("Alice");
 }
 
 // Expose for debugging
