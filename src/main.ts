@@ -26,6 +26,7 @@ function initViewers(): ElixirDataViewer[] {
       "data-toolbar-word-wrap": "wordWrap",
       "data-toolbar-copy": "copy",
       "data-toolbar-search": "search",
+      "data-toolbar-filter": "filter",
     };
 
     for (const [attr, key] of Object.entries(attrMap)) {
@@ -39,9 +40,16 @@ function initViewers(): ElixirDataViewer[] {
     const foldLevelAttr = el.getAttribute("data-fold-level");
     const defaultFoldLevel = foldLevelAttr ? parseInt(foldLevelAttr, 10) : undefined;
 
+    // Read data-filter-keys attribute (comma-separated key names)
+    const filterKeysAttr = el.getAttribute("data-filter-keys");
+    const defaultFilterKeys = filterKeysAttr
+      ? filterKeysAttr.split(",").map((k) => k.trim()).filter(Boolean)
+      : undefined;
+
     const options: ElixirDataViewerOptions = {
       toolbar: toolbarOpts,
       defaultFoldLevel: defaultFoldLevel && !isNaN(defaultFoldLevel) ? defaultFoldLevel : undefined,
+      defaultFilterKeys,
       // defaultWordWrap: true,
     };
 
@@ -71,6 +79,9 @@ if (viewers.length > 0) {
       console.log(`[onInspect] String content (copy suppressed): ${content}`);
     }
   });
+
+  // Demo: log available keys for filtering
+  console.log("[filter] Available keys:", viewers[0].getAvailableKeys());
 }
 
 // Expose for debugging

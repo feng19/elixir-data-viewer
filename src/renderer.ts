@@ -3,6 +3,7 @@ import { highlight, getLineTokens, type HighlightToken } from "./highlighter";
 import { detectFoldRegions, buildFoldMap } from "./fold";
 import { FoldState } from "./state";
 import { SearchState, type SearchMatch } from "./search";
+import { FilterState } from "./filter";
 import { resolveInspectTarget, type InspectTarget, type InspectType } from "./inspect";
 import { preprocessInspectLiterals, type InspectLiteral } from "./preprocess";
 import type { Tree } from "@lezer/common";
@@ -22,6 +23,8 @@ export interface ToolbarOptions {
   copy?: boolean;
   /** Show "Search" button. Default: true */
   search?: boolean;
+  /** Show "Filter" button. Default: true */
+  filter?: boolean;
 }
 
 /**
@@ -58,6 +61,8 @@ export interface ElixirDataViewerOptions {
   defaultFoldLevel?: number;
   /** Whether word wrap is enabled by default. Default: false */
   defaultWordWrap?: boolean;
+  /** Keys to filter out by default when setContent() is called */
+  defaultFilterKeys?: string[];
 }
 
 /** Resolved toolbar config with defaults applied */
@@ -67,6 +72,7 @@ interface ResolvedToolbar {
   wordWrap: boolean;
   copy: boolean;
   search: boolean;
+  filter: boolean;
 }
 
 /**
@@ -81,6 +87,7 @@ export class ElixirDataViewer {
   private wrapBtn: HTMLButtonElement | null = null;
   private copyBtn: HTMLButtonElement | null = null;
   private searchBtn: HTMLButtonElement | null = null;
+  private filterBtn: HTMLButtonElement | null = null;
   private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
   private code: string = "";
   private lines: string[] = [];
@@ -88,7 +95,9 @@ export class ElixirDataViewer {
   private tokens: HighlightToken[] = [];
   private tree: Tree | null = null;
   private foldState: FoldState = new FoldState();
+  private filterState: FilterState = new FilterState();
   private defaultFoldLevel: number = 0;
+  private defaultFilterKeys: string[] = [];
   private searchState: SearchState = new SearchState();
   private onRenderCallback: (() => void) | null = null;
   private wordWrap: boolean = false;
@@ -100,6 +109,18 @@ export class ElixirDataViewer {
   private searchInfoEl: HTMLElement | null = null;
   private searchCaseBtn: HTMLButtonElement | null = null;
   private searchVisible: boolean = false;
+
+  // Filter UI elements
+  private filterBarEl: HTMLElement | null = null;
+  private filterInputEl: HTMLInputElement | null = null;
+  private filterTagsEl: HTMLElement | null = null;
+  private filterInfoEl: HTMLElement | null = null;
+  private filterDropdownEl: HTMLElement | null = null;
+  private filterCopyBtn: HTMLButtonElement | null = null;
+  private filterCopyResetTimer: ReturnType<typeof setTimeout> | null = null;
+  private filterVisible: boolean = false;
+  private filterDropdownIndex: number = -1;
+  private filterDropdownItems: string[] = [];
 
   // Inspect state
   private currentInspect: InspectTarget | null = null;
@@ -114,6 +135,7 @@ export class ElixirDataViewer {
 
     // Resolve options
     this.defaultFoldLevel = options?.defaultFoldLevel ?? 0;
+    this.defaultFilterKeys = options?.defaultFilterKeys ?? [];
     this.wordWrap = options?.defaultWordWrap ?? false;
 
     // Resolve toolbar options with defaults
@@ -124,6 +146,7 @@ export class ElixirDataViewer {
       wordWrap: tb.wordWrap !== false,
       copy: tb.copy !== false,
       search: tb.search !== false,
+      filter: tb.filter !== false,
     };
 
     // Build toolbar (positioned absolutely, does not scroll)
@@ -139,6 +162,9 @@ export class ElixirDataViewer {
 
     // Build search bar (sits above the scrollable area)
     this.buildSearchBar();
+
+    // Build filter bar (sits above the scrollable area, below search bar)
+    this.buildFilterBar();
 
     // Inner wrapper handles scrolling
     this.innerEl = document.createElement("div");
@@ -164,7 +190,7 @@ export class ElixirDataViewer {
    */
   private buildToolbar(): void {
     const cfg = this.toolbarConfig;
-    const hasAnyButton = cfg.foldAll || cfg.unfoldAll || cfg.wordWrap || cfg.copy || cfg.search;
+    const hasAnyButton = cfg.foldAll || cfg.unfoldAll || cfg.wordWrap || cfg.copy || cfg.search || cfg.filter;
     if (!hasAnyButton) return;
 
     this.toolbarEl = document.createElement("div");
@@ -175,6 +201,13 @@ export class ElixirDataViewer {
         this.toggleSearch()
       );
       this.toolbarEl.appendChild(this.searchBtn);
+    }
+
+    if (cfg.filter) {
+      this.filterBtn = this.createToolbarButton("⧩", "Filter Keys", () =>
+        this.toggleFilter()
+      );
+      this.toolbarEl.appendChild(this.filterBtn);
     }
 
     if (cfg.foldAll) {
@@ -586,6 +619,452 @@ export class ElixirDataViewer {
     }
   }
 
+  // ─── Filter API ─────────────────────────────────────────────────────────
+
+  /**
+   * Open the filter bar and focus the input.
+   */
+  openFilter(): void {
+    this.filterVisible = true;
+    this.filterBarEl?.classList.add("edv-filter-bar--visible");
+    if (this.filterBtn) {
+      this.filterBtn.classList.add("edv-toolbar-btn--active");
+    }
+    this.updateFilterTags();
+    this.updateFilterInfo();
+    if (this.filterInputEl) {
+      this.filterInputEl.focus();
+    }
+  }
+
+  /**
+   * Close the filter bar (filters remain active).
+   */
+  closeFilter(): void {
+    this.filterVisible = false;
+    this.filterBarEl?.classList.remove("edv-filter-bar--visible");
+    this.hideFilterDropdown();
+    if (this.filterBtn) {
+      // Keep active style if filters are still applied
+      this.filterBtn.classList.toggle(
+        "edv-toolbar-btn--active",
+        this.filterState.isActive()
+      );
+    }
+    this.container.focus();
+  }
+
+  /**
+   * Toggle filter bar visibility.
+   */
+  toggleFilter(): void {
+    if (this.filterVisible) {
+      this.closeFilter();
+    } else {
+      this.openFilter();
+    }
+  }
+
+  /**
+   * Set keys to filter out (replaces existing filters). Re-renders.
+   */
+  setFilterKeys(keys: string[]): void {
+    this.filterState.setKeys(keys);
+    this.updateFilterTags();
+    this.updateFilterInfo();
+    this.updateFilterBtnState();
+    this.render();
+  }
+
+  /**
+   * Add a single key to the filter. Re-renders.
+   */
+  addFilterKey(key: string): void {
+    this.filterState.addKey(key);
+    this.updateFilterTags();
+    this.updateFilterInfo();
+    this.updateFilterBtnState();
+    this.render();
+  }
+
+  /**
+   * Remove a single key from the filter. Re-renders.
+   */
+  removeFilterKey(key: string): void {
+    this.filterState.removeKey(key);
+    this.updateFilterTags();
+    this.updateFilterInfo();
+    this.updateFilterBtnState();
+    this.render();
+  }
+
+  /**
+   * Get currently filtered keys.
+   */
+  getFilterKeys(): string[] {
+    return this.filterState.getKeys();
+  }
+
+  /**
+   * Get all keys detected in the current content.
+   */
+  getAvailableKeys(): string[] {
+    return this.filterState.getAvailableKeys();
+  }
+
+  /**
+   * Clear all key filters. Re-renders.
+   */
+  clearFilter(): void {
+    this.filterState.clear();
+    this.updateFilterTags();
+    this.updateFilterInfo();
+    this.updateFilterBtnState();
+    this.render();
+  }
+
+  /**
+   * Get the filter state (for programmatic access / testing).
+   */
+  getFilterState(): FilterState {
+    return this.filterState;
+  }
+
+  /**
+   * Get the content with filtered lines removed.
+   * Returns lines that are not hidden by the current key filter.
+   */
+  getFilteredContent(): string {
+    if (!this.filterState.isActive()) {
+      return this.code;
+    }
+    const result: string[] = [];
+    for (let i = 0; i < this.lines.length; i++) {
+      if (!this.filterState.isLineFiltered(i)) {
+        result.push(this.lines[i]);
+      }
+    }
+    return result.join("\n");
+  }
+
+  /**
+   * Copy the filtered content (lines with filtered keys removed) to clipboard.
+   * Shows "✓" feedback on the filter copy button for 2 seconds.
+   */
+  async copyFilteredContent(): Promise<void> {
+    const content = this.getFilteredContent();
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = content;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    this.showFilterCopyFeedback();
+  }
+
+  /**
+   * Show a brief "copied" feedback on the filter copy button.
+   */
+  private showFilterCopyFeedback(): void {
+    if (!this.filterCopyBtn) return;
+    if (this.filterCopyResetTimer) {
+      clearTimeout(this.filterCopyResetTimer);
+    }
+    this.filterCopyBtn.textContent = "✓";
+    this.filterCopyBtn.title = "Copied!";
+    this.filterCopyResetTimer = setTimeout(() => {
+      if (this.filterCopyBtn) {
+        this.filterCopyBtn.textContent = "⎘";
+        this.filterCopyBtn.title = "Copy Filtered Content";
+      }
+      this.filterCopyResetTimer = null;
+    }, 2000);
+  }
+
+  /**
+   * Build the filter bar DOM (hidden by default).
+   */
+  private buildFilterBar(): void {
+    this.filterBarEl = document.createElement("div");
+    this.filterBarEl.classList.add("edv-filter-bar");
+
+    // Input wrapper with dropdown
+    const inputWrapper = document.createElement("div");
+    inputWrapper.classList.add("edv-filter-input-wrapper");
+
+    this.filterInputEl = document.createElement("input");
+    this.filterInputEl.type = "text";
+    this.filterInputEl.classList.add("edv-filter-input");
+    this.filterInputEl.placeholder = "Filter by key…";
+    this.filterInputEl.addEventListener("input", () => this.onFilterInput());
+    this.filterInputEl.addEventListener("keydown", (e) =>
+      this.handleFilterKeyDown(e)
+    );
+    this.filterInputEl.addEventListener("focus", () => this.onFilterInput());
+
+    inputWrapper.appendChild(this.filterInputEl);
+
+    // Dropdown for autocomplete suggestions
+    this.filterDropdownEl = document.createElement("div");
+    this.filterDropdownEl.classList.add("edv-filter-dropdown");
+    inputWrapper.appendChild(this.filterDropdownEl);
+
+    this.filterBarEl.appendChild(inputWrapper);
+
+    // Tags container for active filter chips
+    this.filterTagsEl = document.createElement("div");
+    this.filterTagsEl.classList.add("edv-filter-tags");
+    this.filterBarEl.appendChild(this.filterTagsEl);
+
+    // Filter info (e.g. "3 keys filtered")
+    this.filterInfoEl = document.createElement("span");
+    this.filterInfoEl.classList.add("edv-filter-info");
+    this.filterBarEl.appendChild(this.filterInfoEl);
+
+    // Copy filtered content button
+    this.filterCopyBtn = document.createElement("button");
+    this.filterCopyBtn.classList.add("edv-search-nav-btn");
+    this.filterCopyBtn.textContent = "⎘";
+    this.filterCopyBtn.title = "Copy Filtered Content";
+    this.filterCopyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.copyFilteredContent();
+    });
+    this.filterBarEl.appendChild(this.filterCopyBtn);
+
+    // Clear all button
+    const clearBtn = document.createElement("button");
+    clearBtn.classList.add("edv-search-nav-btn");
+    clearBtn.textContent = "⌫";
+    clearBtn.title = "Clear All Filters";
+    clearBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.clearFilter();
+    });
+    this.filterBarEl.appendChild(clearBtn);
+
+    // Close button
+    const closeBtn = document.createElement("button");
+    closeBtn.classList.add("edv-search-nav-btn");
+    closeBtn.textContent = "✕";
+    closeBtn.title = "Close";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closeFilter();
+    });
+    this.filterBarEl.appendChild(closeBtn);
+
+    // Close dropdown when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!this.filterBarEl?.contains(e.target as Node)) {
+        this.hideFilterDropdown();
+      }
+    });
+
+    this.container.appendChild(this.filterBarEl);
+  }
+
+  /**
+   * Handle input in the filter field — show autocomplete dropdown.
+   */
+  private onFilterInput(): void {
+    const query = this.filterInputEl?.value.trim().toLowerCase() ?? "";
+    const available = this.filterState.getAvailableKeys();
+    const filtered = this.filterState.getKeys();
+
+    // Show keys that match the query and are not already filtered
+    const suggestions = available.filter(
+      (k) =>
+        !filtered.includes(k) &&
+        (query === "" || k.toLowerCase().includes(query))
+    );
+
+    this.showFilterDropdown(suggestions);
+  }
+
+  /**
+   * Handle keyboard events in the filter input.
+   */
+  private handleFilterKeyDown(e: KeyboardEvent): void {
+    const itemCount = this.filterDropdownItems.length;
+    const dropdownVisible = this.filterDropdownEl?.classList.contains("edv-filter-dropdown--visible");
+
+    // Arrow Down: move highlight down in dropdown
+    if (e.key === "ArrowDown" && dropdownVisible && itemCount > 0) {
+      e.preventDefault();
+      this.filterDropdownIndex = Math.min(this.filterDropdownIndex + 1, itemCount - 1);
+      this.updateFilterDropdownHighlight();
+      return;
+    }
+
+    // Arrow Up: move highlight up in dropdown
+    if (e.key === "ArrowUp" && dropdownVisible && itemCount > 0) {
+      e.preventDefault();
+      this.filterDropdownIndex = Math.max(this.filterDropdownIndex - 1, 0);
+      this.updateFilterDropdownHighlight();
+      return;
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      // If a dropdown item is highlighted, select it
+      if (dropdownVisible && this.filterDropdownIndex >= 0 && this.filterDropdownIndex < itemCount) {
+        const selectedKey = this.filterDropdownItems[this.filterDropdownIndex];
+        if (selectedKey && !this.filterState.hasKey(selectedKey)) {
+          this.addFilterKey(selectedKey);
+          if (this.filterInputEl) this.filterInputEl.value = "";
+          this.hideFilterDropdown();
+        }
+        return;
+      }
+
+      // Otherwise, try matching the typed value
+      const value = this.filterInputEl?.value.trim() ?? "";
+      if (value) {
+        const available = this.filterState.getAvailableKeys();
+        const match = available.find(
+          (k) => k.toLowerCase() === value.toLowerCase()
+        );
+        if (match && !this.filterState.hasKey(match)) {
+          this.addFilterKey(match);
+          if (this.filterInputEl) this.filterInputEl.value = "";
+          this.hideFilterDropdown();
+        }
+      }
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      this.hideFilterDropdown();
+      if (!this.filterInputEl?.value) {
+        this.closeFilter();
+      } else {
+        if (this.filterInputEl) this.filterInputEl.value = "";
+      }
+    }
+  }
+
+  /**
+   * Update the visual highlight on the dropdown items.
+   */
+  private updateFilterDropdownHighlight(): void {
+    if (!this.filterDropdownEl) return;
+    const items = this.filterDropdownEl.querySelectorAll<HTMLElement>(".edv-filter-dropdown-item");
+    items.forEach((item, idx) => {
+      item.classList.toggle("edv-filter-dropdown-item--active", idx === this.filterDropdownIndex);
+    });
+
+    // Scroll the active item into view
+    const activeItem = items[this.filterDropdownIndex];
+    if (activeItem) {
+      activeItem.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  /**
+   * Show the autocomplete dropdown with suggestions.
+   */
+  private showFilterDropdown(suggestions: string[]): void {
+    if (!this.filterDropdownEl) return;
+    this.filterDropdownEl.innerHTML = "";
+    this.filterDropdownItems = suggestions;
+    this.filterDropdownIndex = -1;
+
+    if (suggestions.length === 0) {
+      this.filterDropdownEl.classList.remove("edv-filter-dropdown--visible");
+      return;
+    }
+
+    for (const key of suggestions) {
+      const item = document.createElement("div");
+      item.classList.add("edv-filter-dropdown-item");
+      item.textContent = key;
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault(); // prevent blur
+        e.stopPropagation();
+        this.addFilterKey(key);
+        if (this.filterInputEl) {
+          this.filterInputEl.value = "";
+          this.filterInputEl.focus();
+        }
+        this.hideFilterDropdown();
+      });
+      this.filterDropdownEl.appendChild(item);
+    }
+
+    this.filterDropdownEl.classList.add("edv-filter-dropdown--visible");
+  }
+
+  /**
+   * Hide the autocomplete dropdown.
+   */
+  private hideFilterDropdown(): void {
+    this.filterDropdownEl?.classList.remove("edv-filter-dropdown--visible");
+  }
+
+  /**
+   * Rebuild the filter tag chips in the filter bar.
+   */
+  private updateFilterTags(): void {
+    if (!this.filterTagsEl) return;
+    this.filterTagsEl.innerHTML = "";
+
+    const keys = this.filterState.getKeys();
+    for (const key of keys) {
+      const tag = document.createElement("span");
+      tag.classList.add("edv-filter-tag");
+
+      const label = document.createElement("span");
+      label.classList.add("edv-filter-tag-label");
+      label.textContent = key;
+      tag.appendChild(label);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.classList.add("edv-filter-tag-remove");
+      removeBtn.textContent = "✕";
+      removeBtn.title = `Remove filter: ${key}`;
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.removeFilterKey(key);
+      });
+      tag.appendChild(removeBtn);
+
+      this.filterTagsEl.appendChild(tag);
+    }
+  }
+
+  /**
+   * Update the filter info label.
+   */
+  private updateFilterInfo(): void {
+    if (!this.filterInfoEl) return;
+    const count = this.filterState.getFilteredCount();
+    if (count === 0) {
+      this.filterInfoEl.textContent = "";
+    } else {
+      this.filterInfoEl.textContent = `${count} key${count > 1 ? "s" : ""} hidden`;
+    }
+  }
+
+  /**
+   * Update filter toolbar button active state.
+   */
+  private updateFilterBtnState(): void {
+    if (this.filterBtn) {
+      this.filterBtn.classList.toggle(
+        "edv-toolbar-btn--active",
+        this.filterState.isActive()
+      );
+    }
+  }
+
   // ─── Content ──────────────────────────────────────────────────────────
 
   /**
@@ -612,6 +1091,17 @@ export class ElixirDataViewer {
     const regions = detectFoldRegions(modifiedCode, tree);
     const regionMap = buildFoldMap(regions);
     this.foldState.setRegions(regions, regionMap);
+
+    // Detect key-value ranges for filtering
+    this.filterState.detectKeys(tree, modifiedCode);
+
+    // Apply default filter keys if configured
+    if (this.defaultFilterKeys.length > 0 && !this.filterState.isActive()) {
+      this.filterState.setKeys(this.defaultFilterKeys);
+      this.updateFilterTags();
+      this.updateFilterInfo();
+      this.updateFilterBtnState();
+    }
 
     // Apply default fold level if configured
     if (this.defaultFoldLevel > 0) {
@@ -695,6 +1185,12 @@ export class ElixirDataViewer {
       const hidden = this.foldState.isLineHidden(lineIdx);
       if (hidden) {
         // This line is hidden by a fold — skip it
+        lineIdx++;
+        continue;
+      }
+
+      // Check if this line is hidden by a filter
+      if (this.filterState.isLineFiltered(lineIdx)) {
         lineIdx++;
         continue;
       }

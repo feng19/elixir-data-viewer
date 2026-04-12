@@ -14,6 +14,8 @@ Built with vanilla TypeScript + DOM — no CodeMirror, no React — powered by [
   - ⊞ Unfold All
   - ↩ Word Wrap toggle
   - ⎘ Copy to clipboard
+  - ⧩ Filter by key
+- **Key Filtering** — Hide specific key-value pairs by key name (e.g. filter out `socket`, `secret_key_base`)
 - **Multiple Viewers** — Support multiple independent viewer instances on the same page
 - **Configurable Toolbar** — Show/hide individual toolbar buttons via options or HTML `data-*` attributes
 - **Word Wrap** — Toggle word wrap for long lines
@@ -153,6 +155,8 @@ interface ElixirDataViewerOptions {
     unfoldAll?: boolean;  // Show "Unfold All" button (default: true)
     wordWrap?: boolean;   // Show "Word Wrap" toggle (default: true)
     copy?: boolean;       // Show "Copy" button (default: true)
+    search?: boolean;     // Show "Search" button (default: true)
+    filter?: boolean;     // Show "Filter" button (default: true)
   };
   /** Default fold level — regions deeper than this are auto-folded on setContent().
    *  E.g. 3 = show first 3 levels expanded, fold level 4+.
@@ -160,6 +164,8 @@ interface ElixirDataViewerOptions {
   defaultFoldLevel?: number;
   /** Whether word wrap is enabled by default. Default: false */
   defaultWordWrap?: boolean;
+  /** Keys to filter out by default when setContent() is called */
+  defaultFilterKeys?: string[];
 }
 ```
 
@@ -174,7 +180,7 @@ new ElixirDataViewer(container, { toolbar: { copy: false } });
 
 // No toolbar at all
 new ElixirDataViewer(container, {
-  toolbar: { foldAll: false, unfoldAll: false, wordWrap: false, copy: false }
+  toolbar: { foldAll: false, unfoldAll: false, wordWrap: false, copy: false, search: false, filter: false }
 });
 
 // Auto-fold: show only top 3 levels, fold level 4+
@@ -182,6 +188,9 @@ new ElixirDataViewer(container, { defaultFoldLevel: 3 });
 
 // Enable word wrap by default
 new ElixirDataViewer(container, { defaultWordWrap: true });
+
+// Filter out specific keys by default
+new ElixirDataViewer(container, { defaultFilterKeys: ["socket", "secret_key_base"] });
 ```
 
 #### HTML Data Attributes
@@ -198,9 +207,14 @@ When using auto-discovery, toolbar buttons and fold level can be configured via 
 <div class="edv-viewer" data-fold-level="3">
   <script type="text/elixir-data">...</script>
 </div>
+
+<!-- Filter out specific keys by default -->
+<div class="edv-viewer" data-filter-keys="socket,secret_key_base">
+  <script type="text/elixir-data">...</script>
+</div>
 ```
 
-Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-toolbar-word-wrap`, `data-toolbar-copy`, `data-fold-level`
+Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-toolbar-word-wrap`, `data-toolbar-copy`, `data-toolbar-search`, `data-toolbar-filter`, `data-fold-level`, `data-filter-keys`
 
 #### Methods
 
@@ -216,6 +230,15 @@ Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-
 | `copyContent(): Promise<void>` | Copy raw content to clipboard |
 | `onRender(callback: () => void): void` | Set a callback after each render |
 | `onInspect(callback: ((event: InspectEvent) => void) \| null): void` | Set a callback when a value is clicked (see below) |
+| `setFilterKeys(keys: string[]): void` | Set keys to filter out (replaces existing). Re-renders. |
+| `addFilterKey(key: string): void` | Add a single key to filter. Re-renders. |
+| `removeFilterKey(key: string): void` | Remove a single key from filter. Re-renders. |
+| `getFilterKeys(): string[]` | Get currently filtered key names |
+| `getAvailableKeys(): string[]` | Get all key names detected in current content |
+| `clearFilter(): void` | Remove all key filters. Re-renders. |
+| `openFilter(): void` | Open the filter bar UI |
+| `closeFilter(): void` | Close the filter bar UI |
+| `toggleFilter(): void` | Toggle filter bar visibility |
 
 #### `onInspect` — Custom Click Handling
 
@@ -264,9 +287,56 @@ viewer.onInspect((event) => {
 viewer.onInspect(null); // Restore default copy behavior
 ```
 
+#### Key Filtering — Hide Keys by Name
+
+Filter out specific key-value pairs from the rendered view. The data is not modified — only the visual rendering skips the lines belonging to filtered keys.
+
+**Example: Programmatic filtering via API**
+
+```typescript
+const viewer = new ElixirDataViewer(container);
+viewer.setContent(`%{
+  name: "Alice",
+  socket: #Port<0.80>,
+  secret: "s3cr3t"
+}`);
+
+// Hide "socket" and "secret" keys
+viewer.setFilterKeys(["socket", "secret"]);
+
+// Add one more key to hide
+viewer.addFilterKey("pid");
+
+// Remove a key from the filter
+viewer.removeFilterKey("secret");
+
+// Get all keys detected in the content
+console.log(viewer.getAvailableKeys());
+// → ["name", "secret", "socket"]
+
+// Clear all filters
+viewer.clearFilter();
+```
+
+**Example: Default filter keys via options**
+
+```typescript
+new ElixirDataViewer(container, {
+  defaultFilterKeys: ["socket", "secret_key_base"]
+});
+```
+
+**Example: Filter via HTML data attribute**
+
+```html
+<div class="edv-viewer" data-filter-keys="socket,secret_key_base">
+  <script type="text/elixir-data">...</script>
+</div>
+```
+
 ### Lower-Level Exports
 
-For advanced use, the parser, highlighter, and fold modules are also exported:
+For advanced use, the parser, highlighter, fold, and filter modules are also exported:
 
 ```typescript
 import {
@@ -276,6 +346,7 @@ import {
   detectFoldRegions,    // Tree → FoldRegion[]
   buildFoldMap,         // FoldRegion[] → Map<number, FoldRegion>
   FoldState,            // Fold state manager
+  FilterState,          // Filter state manager
 } from "elixir-data-viewer";
 ```
 
