@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  base: "./",
   root: resolve(__dirname, "landing"),
   build: {
     outDir: resolve(__dirname, "dist-landing"),
