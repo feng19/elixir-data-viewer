@@ -1,12 +1,12 @@
 # Elixir Data Viewer
 
-A read-only web viewer for Elixir data structures with syntax highlighting, code folding, line numbers, and a VS Code Dark+ theme.
+A read-only web viewer for Elixir data structures with syntax highlighting, code folding, line numbers, and a Tokyo Night theme.
 
 Built with vanilla TypeScript + DOM — no CodeMirror, no React — powered by [`lezer-elixir`](https://github.com/livebook-dev/lezer-elixir) for accurate parsing.
 
 ## Features
 
-- **Syntax Highlighting** — Accurate Elixir syntax coloring via `lezer-elixir` parser, matching VS Code Dark+ theme
+- **Syntax Highlighting** — Accurate Elixir syntax coloring via `lezer-elixir` parser, matching Tokyo Night theme
 - **Code Folding** — Collapse/expand maps, lists, tuples, keyword lists, bitstrings, and multi-line strings
 - **Line Numbers** — Gutter with line numbers and fold indicators
 - **Floating Toolbar** — Per-viewer toolbar (appears on hover) with:
@@ -352,7 +352,7 @@ import {
 
 ## Theming
 
-The viewer uses CSS classes for all styling. Import the default VS Code Dark+ theme:
+The viewer uses CSS classes for all styling. Import the default Tokyo Night theme:
 
 ```typescript
 import "elixir-data-viewer/style.css";
