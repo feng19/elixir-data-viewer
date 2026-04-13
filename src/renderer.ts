@@ -119,6 +119,7 @@ export class ElixirDataViewer {
   private onRenderCallback: (() => void) | null = null;
   private wordWrap: boolean = false;
   private toolbarConfig: ResolvedToolbar;
+  private suppressScrollOnRender: boolean = false;
 
   // Search UI elements
   private searchBarEl: HTMLElement | null = null;
@@ -567,11 +568,14 @@ export class ElixirDataViewer {
    *
    * @param query - The keyword to search for. Pass an empty string to clear.
    * @param options - Optional settings. `caseSensitive` defaults to the
-   *                  current case-sensitivity state.
+   *                  current case-sensitivity state. `scroll` defaults to
+   *                  `true`; set to `false` to suppress automatic scrolling
+   *                  (useful when searching across multiple instances).
    */
-  search(query: string, options?: { caseSensitive?: boolean }): void {
+  search(query: string, options?: { caseSensitive?: boolean; scroll?: boolean }): void {
     const caseSensitive =
       options?.caseSensitive ?? this.searchState.isCaseSensitive();
+    const shouldScroll = options?.scroll !== false;
 
     // Execute search
     this.searchState.search(this.lines, query, caseSensitive);
@@ -586,12 +590,15 @@ export class ElixirDataViewer {
     );
     this.updateSearchInfo();
 
-    // If there's a current match, reveal it (unfold if needed)
+    // If there's a current match, reveal it (unfold if needed) and optionally scroll
     const match = this.searchState.getCurrentMatch();
     if (match) {
       this.revealAndScrollToMatch(match);
     }
 
+    if (!shouldScroll) {
+      this.suppressScrollOnRender = true;
+    }
     this.render();
   }
 
@@ -1371,10 +1378,11 @@ export class ElixirDataViewer {
     this.onRenderCallback?.();
 
     // After DOM is built, scroll to current match if search is active
-    if (this.searchState.isActive() && this.searchState.getCurrentMatch()) {
+    if (this.searchState.isActive() && this.searchState.getCurrentMatch() && !this.suppressScrollOnRender) {
       // Use requestAnimationFrame to ensure DOM is painted
       requestAnimationFrame(() => this.scrollToCurrentMatch());
     }
+    this.suppressScrollOnRender = false;
   }
 
   /**
