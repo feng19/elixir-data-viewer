@@ -79,6 +79,23 @@ interface ResolvedToolbar {
  * ElixirDataViewer — A read-only Elixir data viewer with syntax highlighting,
  * line numbers, code folding, search, and a floating toolbar.
  */
+/**
+ * Information about a long single-line string that should be truncated.
+ */
+interface LongStringInfo {
+  /** Absolute offset of the String node start (including opening quote) */
+  from: number;
+  /** Absolute offset of the String node end (including closing quote) */
+  to: number;
+  /** Total character count of the string content (excluding quotes) */
+  contentLength: number;
+  /** The 0-indexed line this string is on */
+  line: number;
+}
+
+/** Maximum displayed character count for string content before truncation */
+const STRING_TRUNCATE_THRESHOLD = 128;
+
 export class ElixirDataViewer {
   private container: HTMLElement;
   private innerEl: HTMLElement;
@@ -128,6 +145,10 @@ export class ElixirDataViewer {
 
   // Pre-processed inspect literals (#Reference<...>, #PID<...>, etc.)
   private inspectLiterals: InspectLiteral[] = [];
+
+  // Long string truncation
+  private longStrings: Map<number, LongStringInfo[]> = new Map();
+  private expandedStrings: Set<string> = new Set();
 
   constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
@@ -661,11 +682,26 @@ export class ElixirDataViewer {
 
   /**
    * After render, scroll to the current search match element.
+   * If the match is hidden (e.g. inside a truncated string), scroll to the line instead.
    */
   private scrollToCurrentMatch(): void {
     const currentEl = this.scrollEl.querySelector(".edv-search-current");
     if (currentEl) {
-      currentEl.scrollIntoView({ block: "center", behavior: "smooth" });
+      // Check if the element is actually visible (not hidden by string truncation)
+      const el = currentEl as HTMLElement;
+      if (el.offsetParent !== null || el.style.display !== "none") {
+        currentEl.scrollIntoView({ block: "center", behavior: "smooth" });
+        return;
+      }
+    }
+
+    // Fallback: scroll to the line containing the current match
+    const match = this.searchState.getCurrentMatch();
+    if (match) {
+      const lineEl = this.scrollEl.querySelector(`.edv-line[data-line="${match.line}"]`);
+      if (lineEl) {
+        lineEl.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
     }
   }
 
@@ -1138,6 +1174,9 @@ export class ElixirDataViewer {
     // Post-process: fix token CSS classes for inspect literal ranges
     this.fixInspectLiteralTokenClasses();
 
+    // Detect long single-line strings for truncation
+    this.detectLongStrings(tree);
+
     const regions = detectFoldRegions(modifiedCode, tree);
     const regionMap = buildFoldMap(regions);
     this.foldState.setRegions(regions, regionMap);
@@ -1194,6 +1233,74 @@ export class ElixirDataViewer {
         }
       }
     }
+  }
+
+  /**
+   * Detect single-line strings whose content exceeds the truncation threshold.
+   * Walks the parse tree to find String nodes (not multi-line """) with long content.
+   */
+  private detectLongStrings(tree: Tree): void {
+    this.longStrings.clear();
+    this.expandedStrings.clear();
+
+    const cursor = tree.cursor();
+    do {
+      if (cursor.name === "String" || cursor.name === "Charlist") {
+        const from = cursor.from;
+        const to = cursor.to;
+        const text = this.code.slice(from, to);
+
+        // Skip multi-line strings (""" or ''')
+        if (text.startsWith('"""') || text.startsWith("'''")) continue;
+
+        // Determine quote length (1 for " or ')
+        const quoteLen = 1;
+        const contentLength = to - from - quoteLen * 2;
+
+        if (contentLength > STRING_TRUNCATE_THRESHOLD) {
+          // Determine which line this string starts on
+          const line = this.offsetToLine(from);
+          const endLine = this.offsetToLine(to - 1);
+
+          // Only truncate single-line strings
+          if (line !== endLine) continue;
+
+          const info: LongStringInfo = { from, to, contentLength, line };
+
+          if (!this.longStrings.has(line)) {
+            this.longStrings.set(line, []);
+          }
+          this.longStrings.get(line)!.push(info);
+        }
+      }
+    } while (cursor.next());
+  }
+
+  /**
+   * Get long strings for a given line, or empty array.
+   */
+  private getLongStringsForLine(lineIdx: number): LongStringInfo[] {
+    return this.longStrings.get(lineIdx) ?? [];
+  }
+
+  /**
+   * Check if a long string has been expanded by the user.
+   */
+  private isStringExpanded(info: LongStringInfo): boolean {
+    return this.expandedStrings.has(`${info.from}:${info.to}`);
+  }
+
+  /**
+   * Toggle the expanded state of a long string.
+   */
+  private toggleStringExpanded(info: LongStringInfo): void {
+    const key = `${info.from}:${info.to}`;
+    if (this.expandedStrings.has(key)) {
+      this.expandedStrings.delete(key);
+    } else {
+      this.expandedStrings.add(key);
+    }
+    this.render();
   }
 
   /**
@@ -1335,6 +1442,7 @@ export class ElixirDataViewer {
 
   /**
    * Render a normal highlighted line, with search match highlighting.
+   * After rendering, applies string truncation for long strings.
    */
   private renderHighlightedLine(codeEl: HTMLElement, lineIdx: number): void {
     const lineText = this.lines[lineIdx];
@@ -1352,12 +1460,184 @@ export class ElixirDataViewer {
     if (searchMatches.length === 0) {
       // No search matches — render as before
       this.renderTokenizedText(codeEl, lineText, lineTokens, lineStart);
+    } else {
+      // We have search matches — need to split tokens at match boundaries
+      // Build a character-level class map + search highlight info
+      this.renderWithSearchHighlights(codeEl, lineText, lineTokens, searchMatches, lineIdx);
+    }
+
+    // Post-process: truncate long strings on this line
+    this.applyStringTruncation(codeEl, lineIdx);
+  }
+
+  /**
+   * Post-process a rendered line to truncate long single-line strings.
+   * Hides spans past the truncation threshold and inserts a badge
+   * showing the total character count.
+   */
+  private applyStringTruncation(codeEl: HTMLElement, lineIdx: number): void {
+    const longStrings = this.getLongStringsForLine(lineIdx);
+    if (longStrings.length === 0) return;
+
+    for (const info of longStrings) {
+      const expanded = this.isStringExpanded(info);
+      const quoteLen = 1;
+      const contentFromAbs = info.from + quoteLen;
+      const contentToAbs = info.to - quoteLen;
+
+      if (expanded) {
+        // String is expanded — just add a collapse badge before the closing quote
+        const children = Array.from(codeEl.children) as HTMLElement[];
+        let closingQuoteNode: Node | null = null;
+        for (const child of children) {
+          const childFrom = parseInt(child.dataset.from ?? "", 10);
+          if (isNaN(childFrom)) continue;
+          if (childFrom >= contentToAbs && childFrom < info.to) {
+            closingQuoteNode = child;
+            break;
+          }
+        }
+
+        const badge = this.createStringBadge(info, true);
+        if (closingQuoteNode) {
+          codeEl.insertBefore(badge, closingQuoteNode);
+        } else {
+          codeEl.appendChild(badge);
+        }
+        continue;
+      }
+
+      // String is NOT expanded — truncate display
+      const truncateAtAbs = contentFromAbs + STRING_TRUNCATE_THRESHOLD;
+      const children = Array.from(codeEl.children) as HTMLElement[];
+      let insertBeforeNode: Node | null = null;
+
+      // Check if any search matches fall within the hidden portion of this string
+      const lineStart = this.lineOffsets[info.line];
+      const searchMatches = this.searchState.getLineMatches(info.line);
+      const hasHiddenMatch = searchMatches.some((m) => {
+        const absFrom = lineStart + m.from;
+        const absTo = lineStart + m.to;
+        // Match overlaps with the hidden content region
+        return absTo > truncateAtAbs && absFrom < contentToAbs;
+      });
+
+      for (const child of children) {
+        const childFrom = parseInt(child.dataset.from ?? "", 10);
+        const childTo = parseInt(child.dataset.to ?? "", 10);
+        if (isNaN(childFrom) || isNaN(childTo)) continue;
+
+        // Skip elements entirely outside this string
+        if (childTo <= info.from || childFrom >= info.to) continue;
+
+        // Elements entirely within the visible portion (before truncation): keep
+        // If there's a hidden match, add highlight class to visible string content
+        if (childTo <= truncateAtAbs) {
+          if (hasHiddenMatch && childFrom >= contentFromAbs) {
+            child.classList.add("edv-search-match-truncated");
+          }
+          continue;
+        }
+
+        // Element that straddles the truncation point
+        if (childFrom < truncateAtAbs && childTo > truncateAtAbs) {
+          const charsToKeep = truncateAtAbs - childFrom;
+          this.truncateElementText(child, charsToKeep);
+          if (hasHiddenMatch && childFrom >= contentFromAbs) {
+            child.classList.add("edv-search-match-truncated");
+          }
+          continue;
+        }
+
+        // Elements entirely in the hidden portion (past truncation, within string content)
+        if (childFrom >= truncateAtAbs && childFrom < contentToAbs) {
+          child.style.display = "none";
+          continue;
+        }
+
+        // Closing quote element — keep visible, mark insertion point
+        if (childFrom >= contentToAbs && childFrom < info.to) {
+          if (!insertBeforeNode) {
+            insertBeforeNode = child;
+          }
+        }
+      }
+
+      // Create and insert the truncation badge
+      const badge = this.createStringBadge(info, false);
+      if (hasHiddenMatch) {
+        badge.classList.add("edv-search-match-truncated");
+      }
+      if (insertBeforeNode) {
+        codeEl.insertBefore(badge, insertBeforeNode);
+      } else {
+        codeEl.appendChild(badge);
+      }
+    }
+  }
+
+  /**
+   * Create a badge element for a truncated/expanded long string.
+   */
+  private createStringBadge(info: LongStringInfo, expanded: boolean): HTMLElement {
+    const badge = document.createElement("span");
+    badge.classList.add("edv-string-truncated");
+    if (expanded) {
+      badge.classList.add("edv-string-truncated--expanded");
+    }
+    badge.textContent = `${info.contentLength} chars`;
+    badge.title = expanded
+      ? `String content is ${info.contentLength} characters. Click to collapse.`
+      : `String content is ${info.contentLength} characters (showing first ${STRING_TRUNCATE_THRESHOLD}). Click to expand.`;
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleStringExpanded(info);
+    });
+    return badge;
+  }
+
+  /**
+   * Truncate the visible text content of an element to maxChars characters.
+   * Handles both simple text nodes and nested element structures (e.g. mark > span).
+   */
+  private truncateElementText(el: HTMLElement, maxChars: number): void {
+    // Simple case: single text node child
+    if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
+      const text = el.textContent ?? "";
+      el.textContent = text.slice(0, maxChars);
       return;
     }
 
-    // We have search matches — need to split tokens at match boundaries
-    // Build a character-level class map + search highlight info
-    this.renderWithSearchHighlights(codeEl, lineText, lineTokens, searchMatches, lineIdx);
+    // Complex case: nested children (e.g. mark containing spans)
+    let remaining = maxChars;
+    for (const child of Array.from(el.childNodes)) {
+      if (remaining <= 0) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          (child as HTMLElement).style.display = "none";
+        } else {
+          child.textContent = "";
+        }
+        continue;
+      }
+
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = child.textContent ?? "";
+        if (text.length > remaining) {
+          child.textContent = text.slice(0, remaining);
+          remaining = 0;
+        } else {
+          remaining -= text.length;
+        }
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const text = child.textContent ?? "";
+        if (text.length <= remaining) {
+          remaining -= text.length;
+        } else {
+          this.truncateElementText(child as HTMLElement, remaining);
+          remaining = 0;
+        }
+      }
+    }
   }
 
   /**
