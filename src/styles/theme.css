@@ -476,19 +476,37 @@
 
 /* ===== Search Highlights ===== */
 .edv-search-match {
-  background: rgba(224, 175, 104, 0.4);
+  background: rgba(224, 175, 104, 0.35);
   border-radius: 2px;
   color: inherit;
 }
 
 .edv-search-current {
-  background: rgba(224, 175, 104, 0.8);
+  background: #e0af68;
   border-radius: 2px;
   color: #1a1b26;
+  outline: 2px solid #e0af68;
+  outline-offset: 0px;
+  box-shadow: 0 0 8px rgba(224, 175, 104, 0.6);
+}
+
+/* Force dark text on ALL children inside the current match (overrides tok-* syntax colors) */
+.edv-search-current * {
+  color: #1a1b26 !important;
 }
 
 .edv-line--has-match .edv-line-number {
   color: #e0af68;
+}
+
+/* Full-line highlight for the current (active) match */
+.edv-line--current-match {
+  background: rgba(224, 175, 104, 0.1);
+}
+
+.edv-line--current-match .edv-line-number {
+  color: #e0af68 !important;
+  font-weight: bold;
 }
 
 /* Highlight on visible string content when a match is in the truncated/hidden portion */

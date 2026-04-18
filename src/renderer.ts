@@ -685,6 +685,29 @@ export class ElixirDataViewer {
   private revealAndScrollToMatch(match: SearchMatch): void {
     // Unfold any region hiding this line
     this.foldState.revealLine(match.line);
+
+    // Auto-expand any truncated string whose hidden portion contains this match
+    const longStrings = this.getLongStringsForLine(match.line);
+    if (longStrings.length > 0) {
+      const lineStart = this.lineOffsets[match.line];
+      const matchAbsFrom = lineStart + match.from;
+      const matchAbsTo = lineStart + match.to;
+
+      for (const info of longStrings) {
+        if (this.isStringExpanded(info)) continue;
+
+        const quoteLen = 1;
+        const contentFromAbs = info.from + quoteLen;
+        const truncateAtAbs = contentFromAbs + STRING_TRUNCATE_THRESHOLD;
+        const contentToAbs = info.to - quoteLen;
+
+        // If the match overlaps with the hidden portion, expand the string
+        if (matchAbsTo > truncateAtAbs && matchAbsFrom < contentToAbs) {
+          const key = `${info.from}:${info.to}`;
+          this.expandedStrings.add(key);
+        }
+      }
+    }
   }
 
   /**
@@ -1403,6 +1426,11 @@ export class ElixirDataViewer {
     const lineMatches = this.searchState.getLineMatches(lineIdx);
     if (lineMatches.length > 0) {
       lineEl.classList.add("edv-line--has-match");
+      // Highlight the line containing the current (active) match more prominently
+      const currentMatch = this.searchState.getCurrentMatch();
+      if (currentMatch && currentMatch.line === lineIdx) {
+        lineEl.classList.add("edv-line--current-match");
+      }
     }
 
     // Gutter
