@@ -634,6 +634,64 @@ a:hover {
   color: #7dcfff;
 }
 
+/* ===== Used By ===== */
+.used-by {
+  padding: 80px 0;
+  background: var(--color-primary-bg);
+}
+
+.used-by-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.used-by-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.used-by-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(110, 74, 126, 0.12);
+  border-color: var(--color-primary-light);
+}
+
+.used-by-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  margin-bottom: 16px;
+}
+
+.used-by-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-primary-dark);
+}
+
+.used-by-card p {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
 /* ===== Footer ===== */
 .footer {
   padding: 40px 0;
