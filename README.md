@@ -417,7 +417,7 @@ The dev server starts at `http://localhost:5173` with the demo page showing mult
 
 Projects using Elixir Data Viewer:
 
-- [X-Trace](https://github.com/feng19/xtrace) — A tracing tool for Elixir
+- [X-Trace](https://github.com/feng19/x_trace) — A tracing tool for Elixir
 - [ElixirDataViewer for Kino](https://github.com/feng19/kino_elixir_data_viewer) — A Livebook Kino integration for Elixir Data Viewer
 
 ## License
