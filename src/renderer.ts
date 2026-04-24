@@ -226,7 +226,7 @@ export class ElixirDataViewer {
     }
 
     if (cfg.filter) {
-      this.filterBtn = this.createToolbarButton("⧩", "Filter Keys", () =>
+      this.filterBtn = this.createToolbarButton("⧩", "Filter Out Keys", () =>
         this.toggleFilter()
       );
       this.toolbarEl.appendChild(this.filterBtn);
@@ -917,7 +917,7 @@ export class ElixirDataViewer {
     this.filterInputEl = document.createElement("input");
     this.filterInputEl.type = "text";
     this.filterInputEl.classList.add("edv-filter-input");
-    this.filterInputEl.placeholder = "Filter by key…";
+    this.filterInputEl.placeholder = "Filter out key…";
     this.filterInputEl.addEventListener("input", () => this.onFilterInput());
     this.filterInputEl.addEventListener("keydown", (e) =>
       this.handleFilterKeyDown(e)

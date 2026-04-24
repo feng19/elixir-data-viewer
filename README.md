@@ -14,7 +14,7 @@ Built with vanilla TypeScript + DOM — no CodeMirror, no React — powered by [
   - ⊞ Unfold All
   - ↩ Word Wrap toggle
   - ⎘ Copy to clipboard
-  - ⧩ Filter by key
+  - ⧩ Filter out keys
 - **Key Filtering** — Hide specific key-value pairs by key name (e.g. filter out `socket`, `secret_key_base`)
 - **Multiple Viewers** — Support multiple independent viewer instances on the same page
 - **Configurable Toolbar** — Show/hide individual toolbar buttons via options or HTML `data-*` attributes
@@ -228,6 +228,8 @@ Available attributes: `data-toolbar-fold-all`, `data-toolbar-unfold-all`, `data-
 | `toggleWordWrap(): void` | Toggle word wrap mode |
 | `isWordWrap(): boolean` | Get current word wrap state |
 | `copyContent(): Promise<void>` | Copy raw content to clipboard |
+| `getFilteredContent(): string` | Get content with filtered-out key lines removed. Returns full content if no filter is active. |
+| `copyFilteredContent(): Promise<void>` | Copy filtered content (lines with filtered-out keys removed) to clipboard |
 | `onRender(callback: () => void): void` | Set a callback after each render |
 | `onInspect(callback: ((event: InspectEvent) => void) \| null): void` | Set a callback when a value is clicked (see below) |
 | `setFilterKeys(keys: string[]): void` | Set keys to filter out (replaces existing). Re-renders. |
@@ -287,9 +289,9 @@ viewer.onInspect((event) => {
 viewer.onInspect(null); // Restore default copy behavior
 ```
 
-#### Key Filtering — Hide Keys by Name
+#### Filter Out Keys — Hide Keys by Name
 
-Filter out specific key-value pairs from the rendered view. The data is not modified — only the visual rendering skips the lines belonging to filtered keys.
+Filter out specific key-value pairs from the rendered view. The data is not modified — only the visual rendering skips the lines belonging to filtered-out keys.
 
 **Example: Programmatic filtering via API**
 
@@ -313,6 +315,12 @@ viewer.removeFilterKey("secret");
 // Get all keys detected in the content
 console.log(viewer.getAvailableKeys());
 // → ["name", "secret", "socket"]
+
+// Get content with filtered-out keys removed
+console.log(viewer.getFilteredContent());
+
+// Copy filtered content to clipboard
+await viewer.copyFilteredContent();
 
 // Clear all filters
 viewer.clearFilter();

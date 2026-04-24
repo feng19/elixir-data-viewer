@@ -55,6 +55,9 @@ function initViewers(): ElixirDataViewer[] {
 
     const viewer = new ElixirDataViewer(el, options);
     viewer.setContent(data);
+    if (defaultFilterKeys) {
+      console.log(viewer.getFilteredContent());
+    }
     viewers.push(viewer);
   });
 
