@@ -79,6 +79,18 @@ export class FoldState {
   }
 
   /**
+   * Get the maximum nesting depth across all fold regions.
+   * Returns 0 if there are no foldable regions.
+   */
+  getMaxDepth(): number {
+    let max = 0;
+    for (const region of this.regions) {
+      if (region.depth > max) max = region.depth;
+    }
+    return max;
+  }
+
+  /**
    * Fold all regions.
    */
   foldAll(): void {

@@ -17,6 +17,8 @@ export interface ToolbarOptions {
   foldAll?: boolean;
   /** Show "Unfold All" button. Default: true */
   unfoldAll?: boolean;
+  /** Show fold level controls (−/level/+). Default: true */
+  foldLevel?: boolean;
   /** Show "Word Wrap" toggle button. Default: true */
   wordWrap?: boolean;
   /** Show "Copy" button. Default: true */
@@ -69,6 +71,7 @@ export interface ElixirDataViewerOptions {
 interface ResolvedToolbar {
   foldAll: boolean;
   unfoldAll: boolean;
+  foldLevel: boolean;
   wordWrap: boolean;
   copy: boolean;
   search: boolean;
@@ -101,6 +104,8 @@ export class ElixirDataViewer {
   private innerEl: HTMLElement;
   private scrollEl: HTMLElement;
   private toolbarEl: HTMLElement | null = null;
+  private foldLevelEl: HTMLElement | null = null;
+  private currentFoldLevel: number = 0; // 0 = all expanded
   private wrapBtn: HTMLButtonElement | null = null;
   private copyBtn: HTMLButtonElement | null = null;
   private searchBtn: HTMLButtonElement | null = null;
@@ -165,6 +170,7 @@ export class ElixirDataViewer {
     this.toolbarConfig = {
       foldAll: tb.foldAll !== false,
       unfoldAll: tb.unfoldAll !== false,
+      foldLevel: tb.foldLevel !== false,
       wordWrap: tb.wordWrap !== false,
       copy: tb.copy !== false,
       search: tb.search !== false,
@@ -212,7 +218,7 @@ export class ElixirDataViewer {
    */
   private buildToolbar(): void {
     const cfg = this.toolbarConfig;
-    const hasAnyButton = cfg.foldAll || cfg.unfoldAll || cfg.wordWrap || cfg.copy || cfg.search || cfg.filter;
+    const hasAnyButton = cfg.foldAll || cfg.unfoldAll || cfg.foldLevel || cfg.wordWrap || cfg.copy || cfg.search || cfg.filter;
     if (!hasAnyButton) return;
 
     this.toolbarEl = document.createElement("div");
@@ -240,6 +246,29 @@ export class ElixirDataViewer {
     if (cfg.unfoldAll) {
       const btn = this.createToolbarButton("⊞", "Unfold All", () => this.unfoldAll());
       this.toolbarEl.appendChild(btn);
+    }
+
+    if (cfg.foldLevel) {
+      const group = document.createElement("div");
+      group.classList.add("edv-fold-level-group");
+
+      const minusBtn = this.createToolbarButton("−", "Decrease Fold Level", () =>
+        this.decreaseFoldLevel()
+      );
+      group.appendChild(minusBtn);
+
+      this.foldLevelEl = document.createElement("span");
+      this.foldLevelEl.classList.add("edv-fold-level-display");
+      this.foldLevelEl.title = "Current Fold Level";
+      this.updateFoldLevelDisplay();
+      group.appendChild(this.foldLevelEl);
+
+      const plusBtn = this.createToolbarButton("+", "Increase Fold Level", () =>
+        this.increaseFoldLevel()
+      );
+      group.appendChild(plusBtn);
+
+      this.toolbarEl.appendChild(group);
     }
 
     if (cfg.wordWrap) {
@@ -409,6 +438,8 @@ export class ElixirDataViewer {
    */
   foldAll(): void {
     this.foldState.foldAll();
+    this.currentFoldLevel = 1;
+    this.updateFoldLevelDisplay();
     this.render();
   }
 
@@ -417,6 +448,8 @@ export class ElixirDataViewer {
    */
   unfoldAll(): void {
     this.foldState.unfoldAll();
+    this.currentFoldLevel = 0;
+    this.updateFoldLevelDisplay();
     this.render();
   }
 
@@ -427,7 +460,67 @@ export class ElixirDataViewer {
    */
   foldToLevel(level: number): void {
     this.foldState.foldToLevel(level);
+    this.currentFoldLevel = level;
+    this.updateFoldLevelDisplay();
     this.render();
+  }
+
+  /**
+   * Decrease fold level (fold more). If currently "All" (0), jump to maxDepth.
+   * Minimum level is 1.
+   */
+  private decreaseFoldLevel(): void {
+    const maxDepth = this.foldState.getMaxDepth();
+    if (maxDepth === 0) return; // no foldable regions
+
+    if (this.currentFoldLevel === 0) {
+      // "All expanded" → jump to maxDepth
+      this.currentFoldLevel = maxDepth;
+    } else if (this.currentFoldLevel > 1) {
+      this.currentFoldLevel--;
+    }
+    // At 1 → stay at 1
+
+    this.foldState.foldToLevel(this.currentFoldLevel);
+    this.updateFoldLevelDisplay();
+    this.render();
+  }
+
+  /**
+   * Increase fold level (expand more). If at maxDepth, go to "All" (0).
+   * If already "All", stay.
+   */
+  private increaseFoldLevel(): void {
+    const maxDepth = this.foldState.getMaxDepth();
+    if (maxDepth === 0) return; // no foldable regions
+
+    if (this.currentFoldLevel === 0) {
+      return; // already all expanded
+    } else if (this.currentFoldLevel < maxDepth) {
+      this.currentFoldLevel++;
+      this.foldState.foldToLevel(this.currentFoldLevel);
+    } else {
+      // At maxDepth → go to "All expanded"
+      this.currentFoldLevel = 0;
+      this.foldState.unfoldAll();
+    }
+
+    this.updateFoldLevelDisplay();
+    this.render();
+  }
+
+  /**
+   * Update the fold level display element text.
+   */
+  private updateFoldLevelDisplay(): void {
+    if (!this.foldLevelEl) return;
+    if (this.currentFoldLevel === 0) {
+      this.foldLevelEl.textContent = "All";
+      this.foldLevelEl.title = "All levels expanded";
+    } else {
+      this.foldLevelEl.textContent = String(this.currentFoldLevel);
+      this.foldLevelEl.title = `Fold level ${this.currentFoldLevel}: levels 1–${this.currentFoldLevel} expanded`;
+    }
   }
 
   /**
@@ -1225,7 +1318,11 @@ export class ElixirDataViewer {
     // Apply default fold level if configured
     if (this.defaultFoldLevel > 0) {
       this.foldState.foldToLevel(this.defaultFoldLevel);
+      this.currentFoldLevel = this.defaultFoldLevel;
+    } else {
+      this.currentFoldLevel = 0;
     }
+    this.updateFoldLevelDisplay();
 
     // Re-run search if active
     if (this.searchState.isActive()) {

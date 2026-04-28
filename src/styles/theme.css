@@ -366,6 +366,24 @@
   color: #7aa2f7;
 }
 
+/* ===== Fold Level Control Group ===== */
+.edv-fold-level-group {
+  display: flex;
+  align-items: center;
+  margin: 0 1px;
+}
+
+.edv-fold-level-display {
+  color: #a9b1d6;
+  font-size: 11px;
+  min-width: 24px;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  line-height: 24px;
+  font-family: inherit;
+}
+
 /* ===== Search Bar ===== */
 .edv-search-bar {
   flex-shrink: 0;

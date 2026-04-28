@@ -23,6 +23,7 @@ function initViewers(): ElixirDataViewer[] {
     const attrMap: Record<string, keyof NonNullable<ElixirDataViewerOptions["toolbar"]>> = {
       "data-toolbar-fold-all": "foldAll",
       "data-toolbar-unfold-all": "unfoldAll",
+      "data-toolbar-fold-level": "foldLevel",
       "data-toolbar-word-wrap": "wordWrap",
       "data-toolbar-copy": "copy",
       "data-toolbar-search": "search",
