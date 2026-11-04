@@ -166,6 +166,8 @@ interface ElixirDataViewerOptions {
   defaultWordWrap?: boolean;
   /** Keys to filter out by default when setContent() is called */
   defaultFilterKeys?: string[];
+  /** "dark" (Tokyo Night, default), "light", or "auto" (follows prefers-color-scheme) */
+  theme?: "dark" | "light" | "auto";
 }
 ```
 
@@ -192,6 +194,27 @@ new ElixirDataViewer(container, { defaultWordWrap: true });
 // Filter out specific keys by default
 new ElixirDataViewer(container, { defaultFilterKeys: ["socket", "secret_key_base"] });
 ```
+
+#### Theming
+
+Every color is a CSS custom property on `.edv-container`, so you can re-theme without touching individual selectors:
+
+```css
+.my-viewer.edv-container {
+  --edv-bg: #fff8f0;
+  --edv-fg: #2b2b2b;
+  --edv-accent: #c2410c;
+  --edv-tok-string: #3f6b1a;
+}
+```
+
+Available tokens: `--edv-bg`, `--edv-fg`, `--edv-fg-dim`, `--edv-muted`, `--edv-raised`, `--edv-border`, `--edv-accent`, `--edv-warn`, `--edv-danger`, and `--edv-tok-{atom,namespace,number,string,keyword,operator,function,special,doc,punctuation}`.
+
+#### Large data and accessibility
+
+- Without word wrap, inputs over 400 visible lines render only a window of lines around the viewport, so very large dumps stay responsive. Word wrap renders every line.
+- Toolbar and fold controls are real buttons with labels. The toolbar also appears on keyboard focus, and is pinned above the content on touch devices. In the gutter, `Tab` reaches the fold buttons and the arrow keys move between them.
+- Animations respect `prefers-reduced-motion`.
 
 #### HTML Data Attributes
 

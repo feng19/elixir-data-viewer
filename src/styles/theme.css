@@ -1,18 +1,140 @@
 /*
- * Elixir Data Viewer — Tokyo Night Theme
+ * Elixir Data Viewer — theme
  *
- * Colors based on the tokyonight_night color scheme.
+ * Every color is a --edv-* custom property defined on .edv-container, so a
+ * host can re-theme by overriding a few variables. The default is Tokyo Night.
+ * Opt into the light palette with data-edv-theme="light" (or "auto" to follow
+ * prefers-color-scheme); the `theme` constructor option sets that attribute.
  */
+
+/* ===== Tokens (dark: Tokyo Night) ===== */
+.edv-container {
+  --edv-bg: #1a1b26;
+  --edv-fg: #c0caf5;
+  --edv-fg-dim: #a9b1d6;
+  --edv-muted: #7982a9;
+  --edv-raised: #292e42;
+  --edv-raised-hover: #33394e;
+  --edv-border: #3b4261;
+  --edv-border-strong: #565f89;
+  --edv-accent: #7aa2f7;
+  --edv-warn: #e0af68;
+  --edv-danger: #f7768e;
+  --edv-select: rgba(122, 162, 247, 0.35);
+
+  --edv-match-bg: rgba(224, 175, 104, 0.35);
+  --edv-match-dim-bg: rgba(224, 175, 104, 0.25);
+  --edv-match-line-bg: rgba(224, 175, 104, 0.1);
+  --edv-current-bg: #e0af68;
+  --edv-on-current: #1a1b26;
+  --edv-match-text: #e0af68;
+
+  --edv-inspect-bg: rgba(122, 162, 247, 0.2);
+  --edv-inspect-ring: rgba(122, 162, 247, 0.4);
+  --edv-inspect-ring-soft: rgba(122, 162, 247, 0.35);
+  --edv-inspect-line-bg: rgba(122, 162, 247, 0.06);
+  --edv-inspect-flash: rgba(122, 162, 247, 0.45);
+
+  --edv-tok-atom: #2ac3de;
+  --edv-tok-namespace: #7dcfff;
+  --edv-tok-number: #ff9e64;
+  --edv-tok-string: #9ece6a;
+  --edv-tok-keyword: #bb9af7;
+  --edv-tok-operator: #89ddff;
+  --edv-tok-function: #7aa2f7;
+  --edv-tok-special: #f7768e;
+  --edv-tok-doc: #e0af68;
+  --edv-tok-punctuation: #a9b1d6;
+
+  --edv-line-height: 20px;
+}
+
+/* ===== Tokens (light) ===== */
+.edv-container[data-edv-theme="light"] {
+  --edv-bg: #e6e7ed;
+  --edv-fg: #343b58;
+  --edv-fg-dim: #4c5275;
+  --edv-muted: #5f6685;
+  --edv-raised: #d5d6de;
+  --edv-raised-hover: #cbccd6;
+  --edv-border: #a8abbd;
+  --edv-border-strong: #7b809b;
+  --edv-accent: #2e5cb8;
+  --edv-warn: #8a5300;
+  --edv-danger: #b3223f;
+  --edv-select: rgba(46, 92, 184, 0.25);
+
+  --edv-match-bg: rgba(196, 130, 20, 0.3);
+  --edv-match-dim-bg: rgba(196, 130, 20, 0.2);
+  --edv-match-line-bg: rgba(196, 130, 20, 0.12);
+  --edv-match-text: #8a5300;
+
+  --edv-inspect-bg: rgba(46, 92, 184, 0.15);
+  --edv-inspect-ring: rgba(46, 92, 184, 0.45);
+  --edv-inspect-ring-soft: rgba(46, 92, 184, 0.35);
+  --edv-inspect-line-bg: rgba(46, 92, 184, 0.07);
+  --edv-inspect-flash: rgba(46, 92, 184, 0.4);
+
+  --edv-tok-atom: #006f86;
+  --edv-tok-namespace: #00677d;
+  --edv-tok-number: #a14b00;
+  --edv-tok-string: #3f6b1a;
+  --edv-tok-keyword: #6a3fb5;
+  --edv-tok-operator: #0f6e8c;
+  --edv-tok-function: #2e5cb8;
+  --edv-tok-special: #b3223f;
+  --edv-tok-doc: #8a5300;
+  --edv-tok-punctuation: #4c5275;
+}
+
+@media (prefers-color-scheme: light) {
+  .edv-container[data-edv-theme="auto"] {
+    --edv-bg: #e6e7ed;
+    --edv-fg: #343b58;
+    --edv-fg-dim: #4c5275;
+    --edv-muted: #5f6685;
+    --edv-raised: #d5d6de;
+    --edv-raised-hover: #cbccd6;
+    --edv-border: #a8abbd;
+    --edv-border-strong: #7b809b;
+    --edv-accent: #2e5cb8;
+    --edv-warn: #8a5300;
+    --edv-danger: #b3223f;
+    --edv-select: rgba(46, 92, 184, 0.25);
+
+    --edv-match-bg: rgba(196, 130, 20, 0.3);
+    --edv-match-dim-bg: rgba(196, 130, 20, 0.2);
+    --edv-match-line-bg: rgba(196, 130, 20, 0.12);
+    --edv-match-text: #8a5300;
+
+    --edv-inspect-bg: rgba(46, 92, 184, 0.15);
+    --edv-inspect-ring: rgba(46, 92, 184, 0.45);
+    --edv-inspect-ring-soft: rgba(46, 92, 184, 0.35);
+    --edv-inspect-line-bg: rgba(46, 92, 184, 0.07);
+    --edv-inspect-flash: rgba(46, 92, 184, 0.4);
+
+    --edv-tok-atom: #006f86;
+    --edv-tok-namespace: #00677d;
+    --edv-tok-number: #a14b00;
+    --edv-tok-string: #3f6b1a;
+    --edv-tok-keyword: #6a3fb5;
+    --edv-tok-operator: #0f6e8c;
+    --edv-tok-function: #2e5cb8;
+    --edv-tok-special: #b3223f;
+    --edv-tok-doc: #8a5300;
+    --edv-tok-punctuation: #4c5275;
+  }
+}
 
 /* ===== Container ===== */
 .edv-container {
   position: relative;
-  background: #1a1b26;
-  color: #c0caf5;
+  background: var(--edv-bg);
+  color: var(--edv-fg);
   font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New",
     monospace;
   font-size: 14px;
-  line-height: 20px;
+  line-height: var(--edv-line-height);
   height: 100%;
   overflow: hidden;
   display: flex;
@@ -21,10 +143,44 @@
   -moz-tab-size: 2;
 }
 
+.edv-container:focus {
+  outline: none;
+}
+
+.edv-container:focus-visible {
+  outline: 2px solid var(--edv-accent);
+  outline-offset: -2px;
+}
+
+.edv-container ::selection {
+  background: var(--edv-select);
+}
+
+/* Visually hidden, announced by screen readers */
+.edv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shared keyboard focus ring for every control in the viewer */
+.edv-container button:focus-visible,
+.edv-string-truncated:focus-visible {
+  outline: 2px solid var(--edv-accent);
+  outline-offset: 1px;
+}
+
 .edv-inner {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-color: var(--edv-border) var(--edv-bg);
 }
 
 .edv-scroll {
@@ -35,12 +191,12 @@
 /* ===== Line ===== */
 .edv-line {
   display: flex;
-  min-height: 20px;
+  min-height: var(--edv-line-height);
 }
 
 .edv-line:hover {
-  background: #292e42;
-  outline: 1px dashed #3b4261;
+  background: var(--edv-raised);
+  outline: 1px dashed var(--edv-border);
 }
 
 /* ===== Gutter ===== */
@@ -57,7 +213,7 @@
 
 /* Line number */
 .edv-line-number {
-  color: #3b4261;
+  color: var(--edv-muted);
   text-align: right;
   min-width: 2.5em;
   padding-right: 4px;
@@ -65,30 +221,52 @@
 }
 
 .edv-line:hover .edv-line-number {
-  color: #737aa2;
+  color: var(--edv-fg-dim);
 }
 
 /* ===== Fold indicator ===== */
 .edv-fold-indicator {
   width: 16px;
-  height: 20px;
+  height: var(--edv-line-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
   color: transparent;
   flex-shrink: 0;
+  /* reset for <button> */
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+.edv-fold-indicator svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+  transition: transform 0.15s ease;
 }
 
 .edv-fold-indicator.edv-foldable {
   cursor: pointer;
-  color: #565f89;
+  color: var(--edv-muted);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-/* Show fold indicators on line hover */
-.edv-line:hover .edv-fold-indicator.edv-foldable {
+.edv-fold-indicator.edv-foldable:hover {
+  color: var(--edv-fg);
+}
+
+/* Expanded regions point down; folded ones point right */
+.edv-fold-indicator.edv-foldable[data-folded="false"] svg {
+  transform: rotate(90deg);
+}
+
+/* Show fold indicators on line hover or keyboard focus */
+.edv-line:hover .edv-fold-indicator.edv-foldable,
+.edv-line:focus-within .edv-fold-indicator.edv-foldable {
   opacity: 1;
 }
 
@@ -102,8 +280,8 @@
   flex: 1;
   white-space: pre;
   padding-left: 8px;
-  min-height: 20px;
-  border-left: 1px solid #292e42;
+  min-height: var(--edv-line-height);
+  border-left: 1px solid var(--edv-raised);
 }
 
 /* ===== Word wrap mode ===== */
@@ -124,53 +302,57 @@
 /* ===== Long string truncation badge ===== */
 .edv-string-truncated {
   display: inline-block;
-  background: #292e42;
-  color: #9ece6a;
+  font-family: inherit;
+  appearance: none;
+  background: var(--edv-raised);
+  color: var(--edv-tok-string);
   padding: 0 5px;
   margin: 0 2px;
   border-radius: 3px;
   font-size: 11px;
   cursor: pointer;
-  border: 1px solid #3b4261;
+  border: 1px solid var(--edv-border);
   line-height: 16px;
   vertical-align: middle;
   white-space: nowrap;
 }
 
 .edv-string-truncated:hover {
-  background: #33394e;
-  color: #9ece6a;
-  border-color: #9ece6a;
+  background: var(--edv-raised-hover);
+  color: var(--edv-tok-string);
+  border-color: var(--edv-tok-string);
 }
 
 .edv-string-truncated--expanded {
-  color: #565f89;
+  color: var(--edv-fg-dim);
 }
 
 .edv-string-truncated--expanded:hover {
-  color: #9ece6a;
+  color: var(--edv-tok-string);
 }
 
 /* ===== Fold ellipsis ===== */
 .edv-fold-ellipsis {
   display: inline-block;
-  background: #292e42;
-  color: #7aa2f7;
+  font-family: inherit;
+  appearance: none;
+  background: var(--edv-raised);
+  color: var(--edv-accent);
   padding: 0 5px;
   margin: 0 2px;
   border-radius: 3px;
   font-size: 11px;
   cursor: pointer;
-  border: 1px solid #3b4261;
+  border: 1px solid var(--edv-border);
   line-height: 16px;
   vertical-align: middle;
   white-space: nowrap;
 }
 
 .edv-fold-ellipsis:hover {
-  background: #33394e;
-  color: #7aa2f7;
-  border-color: #7aa2f7;
+  background: var(--edv-raised-hover);
+  color: var(--edv-accent);
+  border-color: var(--edv-accent);
 }
 
 /* ===== Syntax highlighting tokens ===== */
@@ -182,114 +364,114 @@
 
 /* Atoms and keyword keys (:foo, key:) — string.special.symbol */
 .tok-atom {
-  color: #2ac3de;
+  color: var(--edv-tok-atom);
 }
 
 /* Module aliases (MyModule, Kernel) — module */
 .tok-namespace {
-  color: #7dcfff;
+  color: var(--edv-tok-namespace);
 }
 
 /* Booleans: true, false — boolean */
 .tok-bool {
-  color: #ff9e64;
+  color: var(--edv-tok-number);
 }
 
 /* nil — constant.builtin */
 .tok-null {
-  color: #2ac3de;
+  color: var(--edv-tok-atom);
 }
 
 /* Numbers: integers and floats — number */
 .tok-number {
-  color: #ff9e64;
+  color: var(--edv-tok-number);
 }
 
 /* Character literals (?a) — character */
 .tok-character {
-  color: #9ece6a;
+  color: var(--edv-tok-string);
 }
 
 /* Variable names (identifiers) — variable */
 .tok-variableName {
-  color: #c0caf5;
+  color: var(--edv-fg);
 }
 
 /* Function calls (Enum.map, String.trim) — function.call */
 .tok-function {
-  color: #7aa2f7;
+  color: var(--edv-tok-function);
 }
 
 /* Function definitions (def foo, defp bar) — function */
 .tok-definition {
-  color: #7aa2f7;
+  color: var(--edv-tok-function);
 }
 
 /* Special identifiers (__MODULE__, __DIR__, __ENV__) — variable.builtin */
 .tok-special {
-  color: #f7768e;
+  color: var(--edv-tok-special);
 }
 
 /* Strings and charlists — string */
 .tok-string {
-  color: #9ece6a;
+  color: var(--edv-tok-string);
 }
 
 /* Escape sequences (\n, \t, \x{...}) — string.escape */
 .tok-escape {
-  color: #bb9af7;
+  color: var(--edv-tok-keyword);
 }
 
 /* Keywords: do, end, fn, def, defmodule, when, not, etc. — keyword */
 .tok-keyword {
-  color: #bb9af7;
+  color: var(--edv-tok-keyword);
 }
 
 /* Operators: +, -, |>, ++, --, etc. — operator */
 .tok-operator {
-  color: #89ddff;
+  color: var(--edv-tok-operator);
 }
 
 /* Comments (#...) — comment */
 .tok-comment {
-  color: #565f89;
+  color: var(--edv-muted);
   font-style: italic;
 }
 
 /* Elixir inspect literals: #Reference<...>, #PID<...>, #Port<...>, etc. */
 .tok-inspect-literal {
-  color: #bb9af7;
+  color: var(--edv-tok-keyword);
 }
 
 /* Underscored identifiers (_foo, _bar) — dimmed like comments */
 .tok-underscore {
-  color: #565f89;
+  color: var(--edv-muted);
   font-style: italic;
 }
 
 /* Punctuation: (), [], {}, % — punctuation.bracket */
 .tok-punctuation {
-  color: #a9b1d6;
+  color: var(--edv-tok-punctuation);
 }
 
 /* Separators: comma, semicolon — punctuation.delimiter */
 .tok-separator {
-  color: #89ddff;
+  color: var(--edv-tok-operator);
 }
 
 /* Angle brackets: <<, >> — punctuation.special */
 .tok-angleBracket {
-  color: #89ddff;
+  color: var(--edv-tok-operator);
 }
 
 /* Module attributes (@attr, @spec) — attribute */
 .tok-attributeName {
-  color: #7dcfff;
+  color: var(--edv-tok-namespace);
 }
 
 /* Doc strings (@doc, @moduledoc, @typedoc) — string.documentation */
 .tok-docString {
-  color: #e0af68;
+  color: var(--edv-tok-doc);
 }
 
 /* ===== Scrollbar styling ===== */
@@ -299,20 +481,20 @@
 }
 
 .edv-inner::-webkit-scrollbar-track {
-  background: #1a1b26;
+  background: var(--edv-bg);
 }
 
 .edv-inner::-webkit-scrollbar-thumb {
-  background: #3b4261;
+  background: var(--edv-border);
   border-radius: 5px;
 }
 
 .edv-inner::-webkit-scrollbar-thumb:hover {
-  background: #565f89;
+  background: var(--edv-muted);
 }
 
 .edv-inner::-webkit-scrollbar-corner {
-  background: #1a1b26;
+  background: var(--edv-bg);
 }
 
 /* ===== Floating Toolbar ===== */
@@ -323,8 +505,8 @@
   z-index: 10;
   display: flex;
   gap: 2px;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
+  background: var(--edv-bg);
+  border: 1px solid var(--edv-border);
   border-radius: 4px;
   padding: 2px;
   opacity: 0;
@@ -332,7 +514,8 @@
   pointer-events: none;
 }
 
-.edv-container:hover .edv-toolbar {
+.edv-container:hover .edv-toolbar,
+.edv-container:focus-within .edv-toolbar {
   opacity: 1;
   pointer-events: auto;
 }
@@ -340,7 +523,7 @@
 .edv-toolbar-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: #a9b1d6;
+  color: var(--edv-fg-dim);
   width: 26px;
   height: 24px;
   border-radius: 3px;
@@ -354,16 +537,23 @@
   line-height: 1;
 }
 
+.edv-toolbar-btn svg,
+.edv-search-nav-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 .edv-toolbar-btn:hover {
-  background: #292e42;
-  border-color: #565f89;
-  color: #c0caf5;
+  background: var(--edv-raised);
+  border-color: var(--edv-muted);
+  color: var(--edv-fg);
 }
 
 .edv-toolbar-btn.edv-toolbar-btn--active {
-  background: #292e42;
-  border-color: #7aa2f7;
-  color: #7aa2f7;
+  background: var(--edv-raised);
+  border-color: var(--edv-accent);
+  color: var(--edv-accent);
 }
 
 /* ===== Fold Level Control Group ===== */
@@ -374,7 +564,7 @@
 }
 
 .edv-fold-level-display {
-  color: #a9b1d6;
+  color: var(--edv-fg-dim);
   font-size: 11px;
   min-width: 24px;
   text-align: center;
@@ -392,8 +582,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #1a1b26;
-  border-bottom: 1px solid #3b4261;
+  background: var(--edv-bg);
+  border-bottom: 1px solid var(--edv-border);
   font-size: 13px;
 }
 
@@ -404,21 +594,23 @@
 .edv-search-input-wrapper {
   display: flex;
   align-items: center;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
+  background: var(--edv-bg);
+  border: 1px solid var(--edv-border);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .edv-search-input-wrapper:focus-within {
-  border-color: #7aa2f7;
+  border-color: var(--edv-accent);
+  box-shadow: 0 0 0 1px var(--edv-accent);
 }
 
 .edv-search-input {
   background: transparent;
   border: none;
   outline: none;
-  color: #c0caf5;
+  color: var(--edv-fg);
+  caret-color: var(--edv-accent);
   font-family: inherit;
   font-size: 13px;
   padding: 3px 6px;
@@ -426,13 +618,13 @@
 }
 
 .edv-search-input::placeholder {
-  color: #565f89;
+  color: var(--edv-muted);
 }
 
 .edv-search-case-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: #565f89;
+  color: var(--edv-muted);
   cursor: pointer;
   font-size: 12px;
   font-family: inherit;
@@ -443,23 +635,23 @@
 }
 
 .edv-search-case-btn:hover {
-  color: #c0caf5;
-  background: #292e42;
-  border-color: #565f89;
+  color: var(--edv-fg);
+  background: var(--edv-raised);
+  border-color: var(--edv-muted);
 }
 
 .edv-search-case-btn--active {
-  color: #7aa2f7;
-  background: #292e42;
-  border-color: #7aa2f7;
+  color: var(--edv-accent);
+  background: var(--edv-raised);
+  border-color: var(--edv-accent);
 }
 
 .edv-search-case-btn--active:hover {
-  border-color: #c0caf5;
+  border-color: var(--edv-fg);
 }
 
 .edv-search-info {
-  color: #c0caf5;
+  color: var(--edv-fg);
   font-size: 12px;
   min-width: 70px;
   text-align: center;
@@ -467,13 +659,13 @@
 }
 
 .edv-search-info--no-results {
-  color: #f7768e;
+  color: var(--edv-danger);
 }
 
 .edv-search-nav-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: #a9b1d6;
+  color: var(--edv-fg-dim);
   cursor: pointer;
   width: 24px;
   height: 24px;
@@ -488,48 +680,47 @@
 }
 
 .edv-search-nav-btn:hover {
-  background: #292e42;
-  border-color: #565f89;
+  background: var(--edv-raised);
+  border-color: var(--edv-muted);
 }
 
 /* ===== Search Highlights ===== */
 .edv-search-match {
-  background: rgba(224, 175, 104, 0.35);
+  background: var(--edv-match-bg);
   border-radius: 2px;
   color: inherit;
 }
 
 .edv-search-current {
-  background: #e0af68;
+  background: var(--edv-current-bg);
   border-radius: 2px;
-  color: #1a1b26;
-  outline: 2px solid #e0af68;
+  color: var(--edv-on-current);
+  outline: 2px solid var(--edv-current-bg);
   outline-offset: 0px;
-  box-shadow: 0 0 8px rgba(224, 175, 104, 0.6);
 }
 
 /* Force dark text on ALL children inside the current match (overrides tok-* syntax colors) */
 .edv-search-current * {
-  color: #1a1b26 !important;
+  color: var(--edv-on-current) !important;
 }
 
 .edv-line--has-match .edv-line-number {
-  color: #e0af68;
+  color: var(--edv-match-text);
 }
 
 /* Full-line highlight for the current (active) match */
 .edv-line--current-match {
-  background: rgba(224, 175, 104, 0.1);
+  background: var(--edv-match-line-bg);
 }
 
 .edv-line--current-match .edv-line-number {
-  color: #e0af68 !important;
+  color: var(--edv-match-text) !important;
   font-weight: bold;
 }
 
 /* Highlight on visible string content when a match is in the truncated/hidden portion */
 .edv-search-match-truncated {
-  background: rgba(224, 175, 104, 0.25);
+  background: var(--edv-match-dim-bg);
   border-radius: 2px;
 }
 
@@ -542,27 +733,27 @@
 
 /* Leaf value highlight — single token */
 .edv-inspect-token {
-  background: rgba(122, 162, 247, 0.2);
+  background: var(--edv-inspect-bg);
   border-radius: 2px;
-  outline: 1px solid rgba(122, 162, 247, 0.4);
+  outline: 1px solid var(--edv-inspect-ring);
 }
 
 /* Structure highlight — full line background */
 .edv-line.edv-inspect-line {
-  background: rgba(122, 162, 247, 0.06);
+  background: var(--edv-inspect-line-bg);
 }
 
 /* Structure bracket highlight — bolder than line bg */
 .edv-inspect-bracket {
-  background: rgba(122, 162, 247, 0.2);
+  background: var(--edv-inspect-bg);
   border-radius: 2px;
-  outline: 1px solid rgba(122, 162, 247, 0.35);
+  outline: 1px solid var(--edv-inspect-ring-soft);
 }
 
 /* Copy feedback flash animation */
 @keyframes edv-inspect-flash {
-  0%   { background-color: rgba(122, 162, 247, 0.45); }
-  100% { background-color: rgba(122, 162, 247, 0.2); }
+  0%   { background-color: var(--edv-inspect-flash); }
+  100% { background-color: var(--edv-inspect-bg); }
 }
 
 .edv-inspect-copied {
@@ -572,9 +763,9 @@
 /* Floating "Copied!" toast indicator */
 .edv-copied-toast {
   position: fixed;
-  background: #292e42;
-  color: #7aa2f7;
-  border: 1px solid #7aa2f7;
+  background: var(--edv-raised);
+  color: var(--edv-accent);
+  border: 1px solid var(--edv-accent);
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 12px;
@@ -598,8 +789,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #1a1b26;
-  border-bottom: 1px solid #3b4261;
+  background: var(--edv-bg);
+  border-bottom: 1px solid var(--edv-border);
   font-size: 13px;
   flex-wrap: wrap;
 }
@@ -612,21 +803,23 @@
   position: relative;
   display: flex;
   align-items: center;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
+  background: var(--edv-bg);
+  border: 1px solid var(--edv-border);
   border-radius: 3px;
   overflow: visible;
 }
 
 .edv-filter-input-wrapper:focus-within {
-  border-color: #7aa2f7;
+  border-color: var(--edv-accent);
+  box-shadow: 0 0 0 1px var(--edv-accent);
 }
 
 .edv-filter-input {
   background: transparent;
   border: none;
   outline: none;
-  color: #c0caf5;
+  color: var(--edv-fg);
+  caret-color: var(--edv-accent);
   font-family: inherit;
   font-size: 13px;
   padding: 3px 6px;
@@ -634,7 +827,7 @@
 }
 
 .edv-filter-input::placeholder {
-  color: #565f89;
+  color: var(--edv-muted);
 }
 
 /* Filter tags (chips) */
@@ -649,24 +842,24 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  background: #292e42;
-  border: 1px solid #3b4261;
+  background: var(--edv-raised);
+  border: 1px solid var(--edv-border);
   border-radius: 3px;
   padding: 1px 4px 1px 6px;
   font-size: 12px;
-  color: #7aa2f7;
+  color: var(--edv-accent);
   white-space: nowrap;
   line-height: 18px;
 }
 
 .edv-filter-tag-label {
-  color: #7aa2f7;
+  color: var(--edv-accent);
 }
 
 .edv-filter-tag-remove {
   background: transparent;
   border: none;
-  color: #565f89;
+  color: var(--edv-fg-dim);
   cursor: pointer;
   font-size: 10px;
   padding: 0 2px;
@@ -677,13 +870,19 @@
   border-radius: 2px;
 }
 
+.edv-filter-tag-remove svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
 .edv-filter-tag-remove:hover {
-  color: #f7768e;
-  background: rgba(247, 118, 142, 0.15);
+  color: var(--edv-danger);
+  background: var(--edv-raised-hover);
 }
 
 .edv-filter-info {
-  color: #c0caf5;
+  color: var(--edv-fg);
   font-size: 12px;
   white-space: nowrap;
   margin-left: auto;
@@ -696,8 +895,8 @@
   top: 100%;
   left: -1px;
   right: -1px;
-  background: #1a1b26;
-  border: 1px solid #3b4261;
+  background: var(--edv-bg);
+  border: 1px solid var(--edv-border);
   border-top: none;
   border-radius: 0 0 3px 3px;
   max-height: 160px;
@@ -713,14 +912,14 @@
   padding: 4px 8px;
   cursor: pointer;
   font-size: 13px;
-  color: #c0caf5;
+  color: var(--edv-fg);
   white-space: nowrap;
 }
 
 .edv-filter-dropdown-item:hover,
 .edv-filter-dropdown-item--active {
-  background: #292e42;
-  color: #7aa2f7;
+  background: var(--edv-raised);
+  color: var(--edv-accent);
 }
 
 /* Scrollbar for filter dropdown */
@@ -729,10 +928,96 @@
 }
 
 .edv-filter-dropdown::-webkit-scrollbar-track {
-  background: #1a1b26;
+  background: var(--edv-bg);
 }
 
 .edv-filter-dropdown::-webkit-scrollbar-thumb {
-  background: #3b4261;
+  background: var(--edv-border);
   border-radius: 3px;
+}
+
+/* ===== Touch & touch-first layouts ===== */
+/* No hover to reveal the toolbar: pin it above the content instead of over it */
+@media (hover: none), (pointer: coarse) {
+  .edv-toolbar {
+    position: static;
+    flex-shrink: 0;
+    opacity: 1;
+    pointer-events: auto;
+    justify-content: flex-end;
+    overflow-x: auto;
+    border-width: 0 0 1px 0;
+    border-radius: 0;
+    padding: 2px 4px;
+  }
+
+  .edv-fold-indicator.edv-foldable {
+    opacity: 1;
+  }
+}
+
+@media (pointer: coarse) {
+  .edv-container {
+    --edv-line-height: 24px;
+  }
+
+  .edv-toolbar-btn,
+  .edv-search-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .edv-search-case-btn {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .edv-filter-tag {
+    padding: 2px 2px 2px 8px;
+  }
+
+  .edv-filter-tag-remove {
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  .edv-fold-indicator {
+    width: 32px;
+  }
+
+  .edv-filter-dropdown-item {
+    padding: 10px 12px;
+  }
+
+  /* 16px+ stops iOS from zooming the page on focus */
+  .edv-search-input,
+  .edv-filter-input {
+    font-size: 16px;
+    padding: 8px;
+  }
+
+  .edv-search-bar,
+  .edv-filter-bar {
+    padding: 6px 8px;
+  }
+}
+
+/* ===== Reduced motion: keep the feedback, drop the travel ===== */
+@media (prefers-reduced-motion: reduce) {
+  .edv-fold-indicator svg {
+    transition: none;
+  }
+
+  .edv-copied-toast {
+    animation-name: edv-toast-fade-static;
+  }
+
+  .edv-toolbar {
+    transition: none;
+  }
+}
+
+@keyframes edv-toast-fade-static {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
 }

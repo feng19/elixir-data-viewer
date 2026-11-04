@@ -122,16 +122,23 @@ function initHeroCanvas(): void {
     animId = requestAnimationFrame(animate);
   }
 
-  resize();
-  createParticles();
-  animate();
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  window.addEventListener("resize", () => {
+  function start(): void {
     cancelAnimationFrame(animId);
     resize();
     createParticles();
-    animate();
-  });
+    if (reduceMotion.matches) {
+      // Static frame: same network, no loop
+      draw();
+    } else {
+      animate();
+    }
+  }
+
+  start();
+  window.addEventListener("resize", start);
+  reduceMotion.addEventListener("change", start);
 }
 
 /* ===== Tab Switching ===== */
@@ -255,7 +262,9 @@ function initModal(): void {
     }
     closeModal();
     // Scroll to demo
-    document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
+    document.getElementById("demo")?.scrollIntoView({
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
   }
 
   btnOpen.addEventListener("click", openModal);

@@ -6,6 +6,7 @@ import { SearchState, type SearchMatch } from "./search";
 import { FilterState } from "./filter";
 import { resolveInspectTarget, type InspectTarget, type InspectType } from "./inspect";
 import { preprocessInspectLiterals, type InspectLiteral } from "./preprocess";
+import { ICONS } from "./icons";
 import type { Tree } from "@lezer/common";
 
 /**
@@ -65,6 +66,12 @@ export interface ElixirDataViewerOptions {
   defaultWordWrap?: boolean;
   /** Keys to filter out by default when setContent() is called */
   defaultFilterKeys?: string[];
+  /**
+   * Color theme. "dark" (Tokyo Night, default), "light", or "auto" to follow
+   * prefers-color-scheme. Sets `data-edv-theme` on the container; every color
+   * is also overridable through the --edv-* CSS custom properties.
+   */
+  theme?: "dark" | "light" | "auto";
 }
 
 /** Resolved toolbar config with defaults applied */
@@ -99,6 +106,15 @@ interface LongStringInfo {
 /** Maximum displayed character count for string content before truncation */
 const STRING_TRUNCATE_THRESHOLD = 128;
 
+/** Above this many visible lines (and without word wrap) only a window of lines is in the DOM */
+const VIRTUALIZE_MIN_LINES = 400;
+/** Extra lines rendered above and below the viewport */
+const OVERSCAN_LINES = 40;
+/** Debounce for typing in the search box (ms) */
+const SEARCH_DEBOUNCE_MS = 120;
+
+let instanceCounter = 0;
+
 export class ElixirDataViewer {
   private container: HTMLElement;
   private innerEl: HTMLElement;
@@ -125,6 +141,19 @@ export class ElixirDataViewer {
   private wordWrap: boolean = false;
   private toolbarConfig: ResolvedToolbar;
   private suppressScrollOnRender: boolean = false;
+
+  // Rendering window (virtualization)
+  private visibleLines: number[] = [];
+  private virtualized: boolean = false;
+  private winStart: number = 0;
+  private winEnd: number = 0;
+  private lineHeight: number = 20;
+  private maxLineLen: number = 0;
+  private scrollRaf: number | null = null;
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private foldFocusLine: number | null = null;
+  private statusEl: HTMLElement | null = null;
+  private uid: string = `edv-${++instanceCounter}`;
 
   // Search UI elements
   private searchBarEl: HTMLElement | null = null;
@@ -159,6 +188,9 @@ export class ElixirDataViewer {
   constructor(container: HTMLElement, options?: ElixirDataViewerOptions) {
     this.container = container;
     this.container.classList.add("edv-container");
+    if (options?.theme) {
+      this.container.setAttribute("data-edv-theme", options.theme);
+    }
 
     // Resolve options
     this.defaultFoldLevel = options?.defaultFoldLevel ?? 0;
@@ -183,9 +215,7 @@ export class ElixirDataViewer {
     // Apply default word wrap state
     if (this.wordWrap) {
       this.container.classList.add("edv-word-wrap");
-      if (this.wrapBtn) {
-        this.wrapBtn.classList.add("edv-toolbar-btn--active");
-      }
+      this.setActive(this.wrapBtn, true);
     }
 
     // Build search bar (sits above the scrollable area)
@@ -197,6 +227,7 @@ export class ElixirDataViewer {
     // Inner wrapper handles scrolling
     this.innerEl = document.createElement("div");
     this.innerEl.classList.add("edv-inner");
+    this.innerEl.addEventListener("scroll", () => this.onScroll(), { passive: true });
     this.container.appendChild(this.innerEl);
 
     this.scrollEl = document.createElement("div");
@@ -207,10 +238,51 @@ export class ElixirDataViewer {
     this.scrollEl.addEventListener("mouseover", (e) => this.handleInspectHover(e));
     this.scrollEl.addEventListener("mouseout", (e) => this.handleInspectOut(e));
     this.scrollEl.addEventListener("click", (e) => this.handleInspectClick(e));
+    this.scrollEl.addEventListener("keydown", (e) => this.handleFoldKeyDown(e));
+    this.scrollEl.addEventListener("focusin", (e) => this.handleFoldFocus(e));
 
     // Keyboard shortcut: Cmd/Ctrl+F to open search
     this.container.setAttribute("tabindex", "0");
     this.container.addEventListener("keydown", (e) => this.handleKeyDown(e));
+
+    // Landmark + live status for assistive tech
+    this.container.setAttribute("role", "region");
+    if (
+      !this.container.hasAttribute("aria-label") &&
+      !this.container.hasAttribute("aria-labelledby")
+    ) {
+      this.container.setAttribute("aria-label", "Elixir data viewer");
+    }
+    this.statusEl = document.createElement("div");
+    this.statusEl.classList.add("edv-sr-only");
+    this.statusEl.setAttribute("role", "status");
+    this.statusEl.setAttribute("aria-live", "polite");
+    this.container.appendChild(this.statusEl);
+  }
+
+  /** Announce a short message to screen readers. */
+  private announce(message: string): void {
+    if (!this.statusEl) return;
+    // Clear first so repeating the same message is announced again
+    this.statusEl.textContent = "";
+    this.statusEl.textContent = message;
+  }
+
+  /** Toggle a toolbar button's pressed state (class + aria-pressed). */
+  private setActive(btn: HTMLElement | null, on: boolean): void {
+    if (!btn) return;
+    btn.classList.toggle("edv-toolbar-btn--active", on);
+    if (btn.hasAttribute("aria-pressed")) {
+      btn.setAttribute("aria-pressed", String(on));
+    }
+  }
+
+  /** "smooth" unless the user asked for reduced motion. */
+  private scrollBehavior(): ScrollBehavior {
+    return typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
   }
 
   /**
@@ -223,36 +295,42 @@ export class ElixirDataViewer {
 
     this.toolbarEl = document.createElement("div");
     this.toolbarEl.classList.add("edv-toolbar");
+    this.toolbarEl.setAttribute("role", "toolbar");
+    this.toolbarEl.setAttribute("aria-label", "Viewer tools");
 
     if (cfg.search) {
-      this.searchBtn = this.createToolbarButton("⌕", "Search (Ctrl+F)", () =>
-        this.toggleSearch()
+      this.searchBtn = this.createToolbarButton(ICONS.search, "Search", () =>
+        this.toggleSearch(),
+        { toggle: true, hint: "Ctrl+F", keys: "Control+F Meta+F" }
       );
       this.toolbarEl.appendChild(this.searchBtn);
     }
 
     if (cfg.filter) {
-      this.filterBtn = this.createToolbarButton("⧩", "Filter Out Keys", () =>
-        this.toggleFilter()
+      this.filterBtn = this.createToolbarButton(ICONS.filter, "Filter Out Keys", () =>
+        this.toggleFilter(),
+        { toggle: true }
       );
       this.toolbarEl.appendChild(this.filterBtn);
     }
 
     if (cfg.foldAll) {
-      const btn = this.createToolbarButton("⊟", "Fold All", () => this.foldAll());
+      const btn = this.createToolbarButton(ICONS.foldAll, "Fold All", () => this.foldAll());
       this.toolbarEl.appendChild(btn);
     }
 
     if (cfg.unfoldAll) {
-      const btn = this.createToolbarButton("⊞", "Unfold All", () => this.unfoldAll());
+      const btn = this.createToolbarButton(ICONS.unfoldAll, "Unfold All", () => this.unfoldAll());
       this.toolbarEl.appendChild(btn);
     }
 
     if (cfg.foldLevel) {
       const group = document.createElement("div");
       group.classList.add("edv-fold-level-group");
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "Fold level");
 
-      const minusBtn = this.createToolbarButton("−", "Decrease Fold Level", () =>
+      const minusBtn = this.createToolbarButton(ICONS.minus, "Decrease Fold Level", () =>
         this.decreaseFoldLevel()
       );
       group.appendChild(minusBtn);
@@ -263,7 +341,7 @@ export class ElixirDataViewer {
       this.updateFoldLevelDisplay();
       group.appendChild(this.foldLevelEl);
 
-      const plusBtn = this.createToolbarButton("+", "Increase Fold Level", () =>
+      const plusBtn = this.createToolbarButton(ICONS.plus, "Increase Fold Level", () =>
         this.increaseFoldLevel()
       );
       group.appendChild(plusBtn);
@@ -272,14 +350,14 @@ export class ElixirDataViewer {
     }
 
     if (cfg.wordWrap) {
-      this.wrapBtn = this.createToolbarButton("↩", "Word Wrap (Alt+Z)", () => {
+      this.wrapBtn = this.createToolbarButton(ICONS.wrap, "Word Wrap", () => {
         this.toggleWordWrap();
-      });
+      }, { toggle: true });
       this.toolbarEl.appendChild(this.wrapBtn);
     }
 
     if (cfg.copy) {
-      this.copyBtn = this.createToolbarButton("⎘", "Copy", () => this.copyContent());
+      this.copyBtn = this.createToolbarButton(ICONS.copy, "Copy", () => this.copyContent());
       this.toolbarEl.appendChild(this.copyBtn);
     }
 
@@ -292,6 +370,8 @@ export class ElixirDataViewer {
   private buildSearchBar(): void {
     this.searchBarEl = document.createElement("div");
     this.searchBarEl.classList.add("edv-search-bar");
+    this.searchBarEl.setAttribute("role", "search");
+    this.searchBarEl.setAttribute("aria-label", "Search in data");
 
     // Search input wrapper
     const inputWrapper = document.createElement("div");
@@ -301,6 +381,9 @@ export class ElixirDataViewer {
     this.searchInputEl.type = "text";
     this.searchInputEl.classList.add("edv-search-input");
     this.searchInputEl.placeholder = "Search…";
+    this.searchInputEl.setAttribute("aria-label", "Search");
+    this.searchInputEl.setAttribute("autocomplete", "off");
+    this.searchInputEl.spellcheck = false;
     this.searchInputEl.addEventListener("input", () => this.onSearchInput());
     this.searchInputEl.addEventListener("keydown", (e) =>
       this.handleSearchKeyDown(e)
@@ -308,6 +391,9 @@ export class ElixirDataViewer {
 
     // Case sensitivity toggle
     this.searchCaseBtn = document.createElement("button");
+    this.searchCaseBtn.type = "button";
+    this.searchCaseBtn.setAttribute("aria-label", "Match case");
+    this.searchCaseBtn.setAttribute("aria-pressed", "false");
     this.searchCaseBtn.classList.add("edv-search-case-btn");
     this.searchCaseBtn.textContent = "Aa";
     this.searchCaseBtn.title = "Match Case";
@@ -323,13 +409,16 @@ export class ElixirDataViewer {
     // Match info (e.g. "3 of 12")
     this.searchInfoEl = document.createElement("span");
     this.searchInfoEl.classList.add("edv-search-info");
+    this.searchInfoEl.setAttribute("aria-live", "polite");
     this.searchBarEl.appendChild(this.searchInfoEl);
 
     // Navigation buttons
     const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
     prevBtn.classList.add("edv-search-nav-btn");
-    prevBtn.textContent = "↑";
-    prevBtn.title = "Previous Match (Shift+Enter)";
+    prevBtn.innerHTML = ICONS.up;
+    prevBtn.title = "Previous match (Shift+Enter)";
+    prevBtn.setAttribute("aria-label", "Previous match");
     prevBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.searchPrev();
@@ -337,9 +426,11 @@ export class ElixirDataViewer {
     this.searchBarEl.appendChild(prevBtn);
 
     const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
     nextBtn.classList.add("edv-search-nav-btn");
-    nextBtn.textContent = "↓";
-    nextBtn.title = "Next Match (Enter)";
+    nextBtn.innerHTML = ICONS.down;
+    nextBtn.title = "Next match (Enter)";
+    nextBtn.setAttribute("aria-label", "Next match");
     nextBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.searchNext();
@@ -348,9 +439,11 @@ export class ElixirDataViewer {
 
     // Close button
     const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
     closeBtn.classList.add("edv-search-nav-btn");
-    closeBtn.textContent = "✕";
-    closeBtn.title = "Close (Escape)";
+    closeBtn.innerHTML = ICONS.close;
+    closeBtn.title = "Close search (Escape)";
+    closeBtn.setAttribute("aria-label", "Close search");
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.closeSearch();
@@ -384,6 +477,7 @@ export class ElixirDataViewer {
   private handleSearchKeyDown(e: KeyboardEvent): void {
     if (e.key === "Enter") {
       e.preventDefault();
+      this.flushSearchInput();
       if (e.shiftKey) {
         this.searchPrev();
       } else {
@@ -401,13 +495,18 @@ export class ElixirDataViewer {
    */
   private createToolbarButton(
     icon: string,
-    title: string,
-    onClick: () => void
+    label: string,
+    onClick: () => void,
+    opts?: { toggle?: boolean; hint?: string; keys?: string }
   ): HTMLButtonElement {
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.classList.add("edv-toolbar-btn");
-    btn.textContent = icon;
-    btn.title = title;
+    btn.innerHTML = icon; // static SVG constant from icons.ts
+    btn.title = opts?.hint ? `${label} (${opts.hint})` : label;
+    btn.setAttribute("aria-label", label);
+    if (opts?.toggle) btn.setAttribute("aria-pressed", "false");
+    if (opts?.keys) btn.setAttribute("aria-keyshortcuts", opts.keys);
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       onClick();
@@ -421,9 +520,9 @@ export class ElixirDataViewer {
   toggleWordWrap(): void {
     this.wordWrap = !this.wordWrap;
     this.container.classList.toggle("edv-word-wrap", this.wordWrap);
-    if (this.wrapBtn) {
-      this.wrapBtn.classList.toggle("edv-toolbar-btn--active", this.wordWrap);
-    }
+    this.setActive(this.wrapBtn, this.wordWrap);
+    // Wrapped lines have variable height, so the rendering window switches mode
+    if (this.lines.length > VIRTUALIZE_MIN_LINES) this.render();
   }
 
   /**
@@ -563,14 +662,14 @@ export class ElixirDataViewer {
       clearTimeout(this.copyResetTimer);
     }
 
-    const originalText = "⎘";
-    this.copyBtn.textContent = "✓";
+    this.copyBtn.innerHTML = ICONS.check;
     this.copyBtn.classList.add("edv-toolbar-btn--active");
     this.copyBtn.title = "Copied!";
+    this.announce("Copied to clipboard");
 
     this.copyResetTimer = setTimeout(() => {
       if (this.copyBtn) {
-        this.copyBtn.textContent = originalText;
+        this.copyBtn.innerHTML = ICONS.copy;
         this.copyBtn.classList.remove("edv-toolbar-btn--active");
         this.copyBtn.title = "Copy";
       }
@@ -586,9 +685,7 @@ export class ElixirDataViewer {
   openSearch(): void {
     this.searchVisible = true;
     this.searchBarEl?.classList.add("edv-search-bar--visible");
-    if (this.searchBtn) {
-      this.searchBtn.classList.add("edv-toolbar-btn--active");
-    }
+    this.setActive(this.searchBtn, true);
     // Focus and select existing text for easy re-search
     if (this.searchInputEl) {
       this.searchInputEl.focus();
@@ -602,8 +699,10 @@ export class ElixirDataViewer {
   closeSearch(): void {
     this.searchVisible = false;
     this.searchBarEl?.classList.remove("edv-search-bar--visible");
-    if (this.searchBtn) {
-      this.searchBtn.classList.remove("edv-toolbar-btn--active");
+    this.setActive(this.searchBtn, false);
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
     }
     this.searchState.clear();
     this.updateSearchInfo();
@@ -677,10 +776,7 @@ export class ElixirDataViewer {
     if (this.searchInputEl) {
       this.searchInputEl.value = query;
     }
-    this.searchCaseBtn?.classList.toggle(
-      "edv-search-case-btn--active",
-      caseSensitive
-    );
+    this.setCaseActive(caseSensitive);
     this.updateSearchInfo();
 
     // If there's a current match, reveal it (unfold if needed) and optionally scroll
@@ -714,6 +810,22 @@ export class ElixirDataViewer {
    * Handle input in the search field.
    */
   private onSearchInput(): void {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = null;
+      this.runSearchInput();
+    }, SEARCH_DEBOUNCE_MS);
+  }
+
+  /** Run a pending debounced search right now (used before Enter navigation). */
+  private flushSearchInput(): void {
+    if (!this.searchTimer) return;
+    clearTimeout(this.searchTimer);
+    this.searchTimer = null;
+    this.runSearchInput();
+  }
+
+  private runSearchInput(): void {
     const query = this.searchInputEl?.value ?? "";
     this.searchState.search(
       this.lines,
@@ -731,12 +843,17 @@ export class ElixirDataViewer {
     this.render();
   }
 
+  private setCaseActive(on: boolean): void {
+    this.searchCaseBtn?.classList.toggle("edv-search-case-btn--active", on);
+    this.searchCaseBtn?.setAttribute("aria-pressed", String(on));
+  }
+
   /**
    * Toggle case sensitivity and re-search.
    */
   private toggleCaseSensitive(): void {
     const newCase = !this.searchState.isCaseSensitive();
-    this.searchCaseBtn?.classList.toggle("edv-search-case-btn--active", newCase);
+    this.setCaseActive(newCase);
     const query = this.searchInputEl?.value ?? "";
     this.searchState.search(this.lines, query, newCase);
     this.updateSearchInfo();
@@ -808,12 +925,15 @@ export class ElixirDataViewer {
    * If the match is hidden (e.g. inside a truncated string), scroll to the line instead.
    */
   private scrollToCurrentMatch(): void {
+    const target = this.searchState.getCurrentMatch();
+    if (target) this.ensureLineRendered(target.line);
+
     const currentEl = this.scrollEl.querySelector(".edv-search-current");
     if (currentEl) {
       // Check if the element is actually visible (not hidden by string truncation)
       const el = currentEl as HTMLElement;
       if (el.offsetParent !== null || el.style.display !== "none") {
-        currentEl.scrollIntoView({ block: "center", behavior: "smooth" });
+        currentEl.scrollIntoView({ block: "center", behavior: this.scrollBehavior() });
         return;
       }
     }
@@ -823,7 +943,7 @@ export class ElixirDataViewer {
     if (match) {
       const lineEl = this.scrollEl.querySelector(`.edv-line[data-line="${match.line}"]`);
       if (lineEl) {
-        lineEl.scrollIntoView({ block: "center", behavior: "smooth" });
+        lineEl.scrollIntoView({ block: "center", behavior: this.scrollBehavior() });
       }
     }
   }
@@ -836,9 +956,7 @@ export class ElixirDataViewer {
   openFilter(): void {
     this.filterVisible = true;
     this.filterBarEl?.classList.add("edv-filter-bar--visible");
-    if (this.filterBtn) {
-      this.filterBtn.classList.add("edv-toolbar-btn--active");
-    }
+    this.setActive(this.filterBtn, true);
     this.updateFilterTags();
     this.updateFilterInfo();
     if (this.filterInputEl) {
@@ -853,13 +971,8 @@ export class ElixirDataViewer {
     this.filterVisible = false;
     this.filterBarEl?.classList.remove("edv-filter-bar--visible");
     this.hideFilterDropdown();
-    if (this.filterBtn) {
-      // Keep active style if filters are still applied
-      this.filterBtn.classList.toggle(
-        "edv-toolbar-btn--active",
-        this.filterState.isActive()
-      );
-    }
+    // Keep active style if filters are still applied
+    this.setActive(this.filterBtn, this.filterState.isActive());
     this.container.focus();
   }
 
@@ -985,11 +1098,12 @@ export class ElixirDataViewer {
     if (this.filterCopyResetTimer) {
       clearTimeout(this.filterCopyResetTimer);
     }
-    this.filterCopyBtn.textContent = "✓";
+    this.filterCopyBtn.innerHTML = ICONS.check;
     this.filterCopyBtn.title = "Copied!";
+    this.announce("Filtered content copied to clipboard");
     this.filterCopyResetTimer = setTimeout(() => {
       if (this.filterCopyBtn) {
-        this.filterCopyBtn.textContent = "⎘";
+        this.filterCopyBtn.innerHTML = ICONS.copy;
         this.filterCopyBtn.title = "Copy Filtered Content";
       }
       this.filterCopyResetTimer = null;
@@ -1002,6 +1116,8 @@ export class ElixirDataViewer {
   private buildFilterBar(): void {
     this.filterBarEl = document.createElement("div");
     this.filterBarEl.classList.add("edv-filter-bar");
+    this.filterBarEl.setAttribute("role", "group");
+    this.filterBarEl.setAttribute("aria-label", "Filter out keys");
 
     // Input wrapper with dropdown
     const inputWrapper = document.createElement("div");
@@ -1011,6 +1127,13 @@ export class ElixirDataViewer {
     this.filterInputEl.type = "text";
     this.filterInputEl.classList.add("edv-filter-input");
     this.filterInputEl.placeholder = "Filter out key…";
+    this.filterInputEl.setAttribute("aria-label", "Key to filter out");
+    this.filterInputEl.setAttribute("autocomplete", "off");
+    this.filterInputEl.spellcheck = false;
+    this.filterInputEl.setAttribute("role", "combobox");
+    this.filterInputEl.setAttribute("aria-autocomplete", "list");
+    this.filterInputEl.setAttribute("aria-expanded", "false");
+    this.filterInputEl.setAttribute("aria-controls", `${this.uid}-filter-list`);
     this.filterInputEl.addEventListener("input", () => this.onFilterInput());
     this.filterInputEl.addEventListener("keydown", (e) =>
       this.handleFilterKeyDown(e)
@@ -1022,6 +1145,9 @@ export class ElixirDataViewer {
     // Dropdown for autocomplete suggestions
     this.filterDropdownEl = document.createElement("div");
     this.filterDropdownEl.classList.add("edv-filter-dropdown");
+    this.filterDropdownEl.id = `${this.uid}-filter-list`;
+    this.filterDropdownEl.setAttribute("role", "listbox");
+    this.filterDropdownEl.setAttribute("aria-label", "Keys in data");
     inputWrapper.appendChild(this.filterDropdownEl);
 
     this.filterBarEl.appendChild(inputWrapper);
@@ -1034,13 +1160,16 @@ export class ElixirDataViewer {
     // Filter info (e.g. "3 keys filtered")
     this.filterInfoEl = document.createElement("span");
     this.filterInfoEl.classList.add("edv-filter-info");
+    this.filterInfoEl.setAttribute("aria-live", "polite");
     this.filterBarEl.appendChild(this.filterInfoEl);
 
     // Copy filtered content button
     this.filterCopyBtn = document.createElement("button");
+    this.filterCopyBtn.type = "button";
     this.filterCopyBtn.classList.add("edv-search-nav-btn");
-    this.filterCopyBtn.textContent = "⎘";
+    this.filterCopyBtn.innerHTML = ICONS.copy;
     this.filterCopyBtn.title = "Copy Filtered Content";
+    this.filterCopyBtn.setAttribute("aria-label", "Copy filtered content");
     this.filterCopyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.copyFilteredContent();
@@ -1049,9 +1178,11 @@ export class ElixirDataViewer {
 
     // Clear all button
     const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
     clearBtn.classList.add("edv-search-nav-btn");
-    clearBtn.textContent = "⌫";
+    clearBtn.innerHTML = ICONS.clear;
     clearBtn.title = "Clear All Filters";
+    clearBtn.setAttribute("aria-label", "Clear all filters");
     clearBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.clearFilter();
@@ -1060,9 +1191,11 @@ export class ElixirDataViewer {
 
     // Close button
     const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
     closeBtn.classList.add("edv-search-nav-btn");
-    closeBtn.textContent = "✕";
-    closeBtn.title = "Close";
+    closeBtn.innerHTML = ICONS.close;
+    closeBtn.title = "Close filter";
+    closeBtn.setAttribute("aria-label", "Close filter");
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.closeFilter();
@@ -1167,8 +1300,13 @@ export class ElixirDataViewer {
     if (!this.filterDropdownEl) return;
     const items = this.filterDropdownEl.querySelectorAll<HTMLElement>(".edv-filter-dropdown-item");
     items.forEach((item, idx) => {
-      item.classList.toggle("edv-filter-dropdown-item--active", idx === this.filterDropdownIndex);
+      const active = idx === this.filterDropdownIndex;
+      item.classList.toggle("edv-filter-dropdown-item--active", active);
+      item.setAttribute("aria-selected", String(active));
     });
+    const activeId = items[this.filterDropdownIndex]?.id;
+    if (activeId) this.filterInputEl?.setAttribute("aria-activedescendant", activeId);
+    else this.filterInputEl?.removeAttribute("aria-activedescendant");
 
     // Scroll the active item into view
     const activeItem = items[this.filterDropdownIndex];
@@ -1186,14 +1324,20 @@ export class ElixirDataViewer {
     this.filterDropdownItems = suggestions;
     this.filterDropdownIndex = -1;
 
+    this.filterInputEl?.removeAttribute("aria-activedescendant");
+
     if (suggestions.length === 0) {
       this.filterDropdownEl.classList.remove("edv-filter-dropdown--visible");
+      this.filterInputEl?.setAttribute("aria-expanded", "false");
       return;
     }
 
-    for (const key of suggestions) {
+    suggestions.forEach((key, i) => {
       const item = document.createElement("div");
       item.classList.add("edv-filter-dropdown-item");
+      item.id = `${this.uid}-filter-opt-${i}`;
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", "false");
       item.textContent = key;
       item.addEventListener("mousedown", (e) => {
         e.preventDefault(); // prevent blur
@@ -1205,10 +1349,11 @@ export class ElixirDataViewer {
         }
         this.hideFilterDropdown();
       });
-      this.filterDropdownEl.appendChild(item);
-    }
+      this.filterDropdownEl!.appendChild(item);
+    });
 
     this.filterDropdownEl.classList.add("edv-filter-dropdown--visible");
+    this.filterInputEl?.setAttribute("aria-expanded", "true");
   }
 
   /**
@@ -1216,6 +1361,8 @@ export class ElixirDataViewer {
    */
   private hideFilterDropdown(): void {
     this.filterDropdownEl?.classList.remove("edv-filter-dropdown--visible");
+    this.filterInputEl?.setAttribute("aria-expanded", "false");
+    this.filterInputEl?.removeAttribute("aria-activedescendant");
   }
 
   /**
@@ -1237,8 +1384,10 @@ export class ElixirDataViewer {
 
       const removeBtn = document.createElement("button");
       removeBtn.classList.add("edv-filter-tag-remove");
-      removeBtn.textContent = "✕";
+      removeBtn.type = "button";
+      removeBtn.innerHTML = ICONS.close;
       removeBtn.title = `Remove filter: ${key}`;
+      removeBtn.setAttribute("aria-label", `Remove filter: ${key}`);
       removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         this.removeFilterKey(key);
@@ -1266,12 +1415,7 @@ export class ElixirDataViewer {
    * Update filter toolbar button active state.
    */
   private updateFilterBtnState(): void {
-    if (this.filterBtn) {
-      this.filterBtn.classList.toggle(
-        "edv-toolbar-btn--active",
-        this.filterState.isActive()
-      );
-    }
+    this.setActive(this.filterBtn, this.filterState.isActive());
   }
 
   // ─── Content ──────────────────────────────────────────────────────────
@@ -1283,6 +1427,11 @@ export class ElixirDataViewer {
     this.code = code;
     this.lines = code.split("\n");
     this.buildLineOffsets();
+    this.currentInspect = null;
+    this.foldFocusLine = null;
+    let maxLen = 0;
+    for (const l of this.lines) if (l.length > maxLen) maxLen = l.length;
+    this.maxLineLen = maxLen;
 
     // Pre-process: replace inspect literals (#Reference<...>, #PID<...>, etc.)
     // with same-length atoms so lezer-elixir doesn't treat them as comments
@@ -1457,43 +1606,16 @@ export class ElixirDataViewer {
 
   /**
    * Full re-render of the viewer.
+   *
+   * Computes which source lines are visible (after folds and filters) in one
+   * pass, then builds only the lines that need to be in the DOM: all of them
+   * for small inputs, or a window around the viewport for large ones.
    */
   private render(): void {
-    this.scrollEl.innerHTML = "";
-
-    const lineCount = this.lines.length;
-    const gutterWidth = String(lineCount).length;
-
-    let lineIdx = 0;
-    while (lineIdx < lineCount) {
-      const hidden = this.foldState.isLineHidden(lineIdx);
-      if (hidden) {
-        // This line is hidden by a fold — skip it
-        lineIdx++;
-        continue;
-      }
-
-      // Check if this line is hidden by a filter
-      if (this.filterState.isLineFiltered(lineIdx)) {
-        lineIdx++;
-        continue;
-      }
-
-      const isFoldable = this.foldState.isFoldable(lineIdx);
-      const isFolded = this.foldState.isFolded(lineIdx);
-      const region = this.foldState.getRegion(lineIdx);
-
-      const lineEl = this.createLineElement(
-        lineIdx,
-        gutterWidth,
-        isFoldable,
-        isFolded,
-        region
-      );
-      this.scrollEl.appendChild(lineEl);
-
-      lineIdx++;
-    }
+    this.computeVisibleLines();
+    this.virtualized =
+      !this.wordWrap && this.visibleLines.length > VIRTUALIZE_MIN_LINES;
+    this.renderWindow();
 
     this.onRenderCallback?.();
 
@@ -1503,6 +1625,171 @@ export class ElixirDataViewer {
       requestAnimationFrame(() => this.scrollToCurrentMatch());
     }
     this.suppressScrollOnRender = false;
+  }
+
+  /**
+   * Build the list of visible source lines. Folded regions are skipped in one
+   * jump, so cost is O(lines) regardless of how many folds are active.
+   */
+  private computeVisibleLines(): void {
+    const out: number[] = [];
+    const n = this.lines.length;
+    let i = 0;
+    while (i < n) {
+      const filtered = this.filterState.isLineFiltered(i);
+      if (this.foldState.isFolded(i)) {
+        const region = this.foldState.getRegion(i);
+        if (!filtered) out.push(i);
+        i = region ? Math.max(region.endLine, i) + 1 : i + 1;
+        continue;
+      }
+      if (!filtered) out.push(i);
+      i++;
+    }
+    this.visibleLines = out;
+  }
+
+  /** Read the line height from the --edv-line-height token (px). */
+  private measureLineHeight(): number {
+    const raw = getComputedStyle(this.container).getPropertyValue("--edv-line-height");
+    const px = parseFloat(raw);
+    return px > 0 ? px : 20;
+  }
+
+  /**
+   * Render the current window of visible lines into the scroll element.
+   * Spacing above and below stands in for the lines that are not in the DOM.
+   */
+  private renderWindow(): void {
+    const total = this.visibleLines.length;
+    const gutterWidth = String(this.lines.length).length;
+    let start = 0;
+    let end = total;
+
+    if (this.virtualized) {
+      this.lineHeight = this.measureLineHeight();
+      const lh = this.lineHeight;
+      const viewH = this.innerEl.clientHeight || 600;
+      const first = Math.floor(Math.max(0, this.innerEl.scrollTop - 8) / lh);
+      const count = Math.ceil(viewH / lh);
+      start = Math.max(0, first - OVERSCAN_LINES);
+      end = Math.min(total, first + count + OVERSCAN_LINES);
+      this.scrollEl.style.paddingTop = `${8 + start * lh}px`;
+      this.scrollEl.style.paddingBottom = `${8 + (total - end) * lh}px`;
+      // Keep the horizontal scroll extent stable while the window moves
+      this.scrollEl.style.minWidth = `calc(${this.maxLineLen}ch + 120px)`;
+    } else {
+      this.scrollEl.style.paddingTop = "";
+      this.scrollEl.style.paddingBottom = "";
+      this.scrollEl.style.minWidth = "";
+    }
+    this.winStart = start;
+    this.winEnd = end;
+
+    const frag = document.createDocumentFragment();
+    for (let k = start; k < end; k++) {
+      const lineIdx = this.visibleLines[k];
+      const lineEl = this.createLineElement(
+        lineIdx,
+        gutterWidth,
+        this.foldState.isFoldable(lineIdx),
+        this.foldState.isFolded(lineIdx),
+        this.foldState.getRegion(lineIdx)
+      );
+      frag.appendChild(lineEl);
+    }
+    this.scrollEl.replaceChildren(frag);
+
+    this.applyFoldRoving();
+    // Rebuilding drops the hover highlight; restore it for the hovered target
+    if (this.currentInspect) this.applyInspectHighlight(this.currentInspect);
+  }
+
+  /** Scroll handler: slide the rendering window when the viewport nears its edge. */
+  private onScroll(): void {
+    if (!this.virtualized || this.scrollRaf !== null) return;
+    this.scrollRaf = requestAnimationFrame(() => {
+      this.scrollRaf = null;
+      const lh = this.lineHeight;
+      const first = Math.floor(Math.max(0, this.innerEl.scrollTop - 8) / lh);
+      const last = first + Math.ceil((this.innerEl.clientHeight || 600) / lh);
+      const margin = OVERSCAN_LINES / 2;
+      const total = this.visibleLines.length;
+      const nearTop = this.winStart > 0 && first < this.winStart + margin;
+      const nearBottom = this.winEnd < total && last > this.winEnd - margin;
+      if (nearTop || nearBottom) this.renderWindow();
+    });
+  }
+
+  /** Make sure a source line is in the DOM, jumping the window to it if needed. */
+  private ensureLineRendered(line: number): void {
+    if (!this.virtualized) return;
+    let lo = 0;
+    let hi = this.visibleLines.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.visibleLines[mid] < line) lo = mid + 1;
+      else hi = mid;
+    }
+    if (this.visibleLines[lo] !== line) return;
+    if (lo >= this.winStart && lo < this.winEnd) return;
+    this.innerEl.scrollTop = Math.max(
+      0,
+      lo * this.lineHeight - this.innerEl.clientHeight / 2
+    );
+    this.renderWindow();
+  }
+
+  // ─── Fold button keyboard model ───────────────────────────────────────
+
+  /** Toggle a fold and keep keyboard focus on that line's fold button. */
+  private toggleFoldAt(lineIdx: number): void {
+    this.foldState.toggle(lineIdx);
+    this.foldFocusLine = lineIdx;
+    this.render();
+    this.scrollEl
+      .querySelector<HTMLElement>(`.edv-fold-indicator[data-line="${lineIdx}"]`)
+      ?.focus({ preventScroll: true });
+  }
+
+  /** Roving tabindex: one fold button is a tab stop, arrow keys move between them. */
+  private applyFoldRoving(): void {
+    const btns = this.scrollEl.querySelectorAll<HTMLElement>("button.edv-fold-indicator");
+    if (btns.length === 0) return;
+    let active: HTMLElement | null = null;
+    if (this.foldFocusLine !== null) {
+      active = this.scrollEl.querySelector(
+        `button.edv-fold-indicator[data-line="${this.foldFocusLine}"]`
+      );
+    }
+    if (!active) active = btns[0];
+    btns.forEach((b) => (b.tabIndex = b === active ? 0 : -1));
+  }
+
+  private handleFoldFocus(e: Event): void {
+    const el = (e.target as HTMLElement | null)?.closest<HTMLElement>("button.edv-fold-indicator");
+    if (!el) return;
+    this.foldFocusLine = parseInt(el.dataset.line ?? "", 10);
+    this.applyFoldRoving();
+  }
+
+  private handleFoldKeyDown(e: KeyboardEvent): void {
+    const el = (e.target as HTMLElement | null)?.closest<HTMLElement>("button.edv-fold-indicator");
+    if (!el) return;
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+    const btns = Array.from(
+      this.scrollEl.querySelectorAll<HTMLElement>("button.edv-fold-indicator")
+    );
+    const i = btns.indexOf(el);
+    let next = i;
+    if (e.key === "ArrowDown") next = Math.min(btns.length - 1, i + 1);
+    else if (e.key === "ArrowUp") next = Math.max(0, i - 1);
+    else if (e.key === "Home") next = 0;
+    else next = btns.length - 1;
+    if (btns[next] && next !== i) {
+      e.preventDefault();
+      btns[next].focus();
+    }
   }
 
   /**
@@ -1537,20 +1824,35 @@ export class ElixirDataViewer {
     // Line number (left side)
     const lineNumEl = document.createElement("span");
     lineNumEl.classList.add("edv-line-number");
+    lineNumEl.setAttribute("aria-hidden", "true");
     lineNumEl.textContent = String(lineIdx + 1).padStart(gutterWidth, " ");
     gutterEl.appendChild(lineNumEl);
 
     // Fold indicator (right side, adjacent to code)
-    const foldEl = document.createElement("span");
-    foldEl.classList.add("edv-fold-indicator");
+    let foldEl: HTMLElement;
     if (isFoldable) {
-      foldEl.classList.add("edv-foldable");
-      foldEl.textContent = isFolded ? "\u25B6" : "\u25BC";
-      foldEl.addEventListener("click", (e) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.classList.add("edv-fold-indicator", "edv-foldable");
+      btn.dataset.line = String(lineIdx);
+      btn.dataset.folded = String(isFolded);
+      btn.tabIndex = -1; // roving tabindex is applied after the window is built
+      btn.setAttribute("aria-expanded", String(!isFolded));
+      const endLine = region ? region.endLine : lineIdx;
+      btn.setAttribute(
+        "aria-label",
+        `${isFolded ? "Expand" : "Collapse"} lines ${lineIdx + 1} to ${endLine + 1}`
+      );
+      btn.innerHTML = ICONS.chevron;
+      btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.foldState.toggle(lineIdx);
-        this.render();
+        this.toggleFoldAt(lineIdx);
       });
+      foldEl = btn;
+    } else {
+      foldEl = document.createElement("span");
+      foldEl.classList.add("edv-fold-indicator");
+      foldEl.setAttribute("aria-hidden", "true");
     }
     gutterEl.appendChild(foldEl);
 
@@ -1713,7 +2015,8 @@ export class ElixirDataViewer {
    * Create a badge element for a truncated/expanded long string.
    */
   private createStringBadge(info: LongStringInfo, expanded: boolean): HTMLElement {
-    const badge = document.createElement("span");
+    const badge = document.createElement("button");
+    badge.type = "button";
     badge.classList.add("edv-string-truncated");
     if (expanded) {
       badge.classList.add("edv-string-truncated--expanded");
@@ -1722,6 +2025,7 @@ export class ElixirDataViewer {
     badge.title = expanded
       ? `String content is ${info.contentLength} characters. Click to collapse.`
       : `String content is ${info.contentLength} characters (showing first ${STRING_TRUNCATE_THRESHOLD}). Click to expand.`;
+    badge.setAttribute("aria-label", badge.title);
     badge.addEventListener("click", (e) => {
       e.stopPropagation();
       this.toggleStringExpanded(info);
@@ -1970,7 +2274,9 @@ export class ElixirDataViewer {
     }
 
     // Add the fold ellipsis — carries the full structure range for inspect
-    const ellipsis = document.createElement("span");
+    const ellipsis = document.createElement("button");
+    ellipsis.type = "button";
+    ellipsis.tabIndex = -1; // the line's fold button is the keyboard route
     ellipsis.classList.add("edv-fold-ellipsis");
     const foldedLines = region.endLine - region.startLine;
     if (region.itemCount > 0) {
@@ -1985,10 +2291,10 @@ export class ElixirDataViewer {
     }
     ellipsis.dataset.from = String(region.startOffset);
     ellipsis.dataset.to = String(region.endOffset);
+    ellipsis.setAttribute("aria-label", `Expand: ${ellipsis.title}`);
     ellipsis.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.foldState.toggle(lineIdx);
-      this.render();
+      this.toggleFoldAt(lineIdx);
     });
     codeEl.appendChild(ellipsis);
 
